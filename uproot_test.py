@@ -6,7 +6,6 @@ from ROOT import RDataFrame
 
 print("check1")
 data= uproot.open('root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root')
-
 print("check2")
 
 print(data.keys())
@@ -14,9 +13,14 @@ print(data["Events"])
 
 tree=data["Events"]
 print("check3")
-print("blah")
+tree.show()
+
+#PFCands_dz = tree["PFCands_dz"].array(library="ak")[:1]
 print("check4")
-PFCands_dz = tree["PFCands_dz"].array(library="ak")[:1]
+
+#print(PFCands_pt)
 print("check5")
-print(PFCands_pt)
-print("check6")
+
+
+#Look into using pandas?#Currently getting runtime errors
+PFCan_dz_panda = tree.arrays(filter_name = "PFCands_mass",library = "pd")
