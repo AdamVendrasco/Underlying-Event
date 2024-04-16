@@ -4,12 +4,13 @@ dataFile = ROOT.TFile.Open("root://eospublic.cern.ch//eos/opendata/cms/derived-d
 
 keys = dataFile.GetListOfKeys()
 for key in keys:
-	obj = key.ReadObj()  # Read the object corresponding to the key
-	if isinstance(obj, ROOT.TTree):  # Check if the object is a TTree
+	obj = key.ReadObj()  			# Read the object corresponding to the key
+	if isinstance(obj, ROOT.TTree):	# Check if the object is a TTree
 			print(obj.GetName())
 		
-#(TTree*)_file0->Get("Events")
 
+flat_tree = uproot.open(dataFile)['events']
+print_(flat_tree.keys())
 
 
 
