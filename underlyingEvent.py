@@ -1,26 +1,42 @@
-import ROOT
+#import ROOT
 import uproot
-from ROOT import RDataFrame
+#from ROOT import RDataFrame
 import numpy as np
-import pandas as pd
-import awkard as ak
-import tensorflow as tf
+#import pandas as pd
+#import awkard as ak
+#import TensorFlow as tf
+
 
 #'root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root'
 
 nano_file= uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
-keys = nano_file.GetListOfKeys()
-for key in keys:
-	obj = key.ReadObj()  			# Read the object corresponding to the key
-	if isinstance(obj, ROOT.TTree):	# Check if the object is a TTree
-			print(obj.GetName())
-		
+#keys = nano_file.GetlistOfKeys()
+#for key in keys:
+#	obj = key.ReadObj()  			# Read the object corresponding to the key
+#	if isinstance(obj, ROOT.TTree):	# Check if the object is a TTree
+#			print(obj.GetName())
+
 events = nano_file["Events"]
-pfcans = events.arrays(filter_name="PF*",entry_stop = 10,library="pd")
-pfcsv = pfcans.to_csv('pfcan_csv')
+pf_dz = events.arrays(filter_name="PFCands_dz",library="np")
+pf_dz_csv = pf_dz.to_csv('pf_dz_csv')
 
 
 
+
+# Define your list of cut conditions
+#cut_conditions = [
+#    "muon_pt > 20",  # Select events where muon_pt is greater than 20 GeV
+#    #"abs(muon_eta) < 2.4",  # Select events where the absolute value of muon_eta is less than 2.4
+    #"muon_charge == -1"  # Select events where muon_charge is equal to -1
+#]
+
+# Combine the cut conditions using logical AND (all conditions must be satisfied)
+#combined_cut_condition = " & ".join(cut_conditions)
+
+# Apply the combined cut and retrieve the selected data
+#selected_data = tree.arrays("*", cut=combined_cut_condition)
+
+# Now you can access the data of the selected events and process it as needed
 
 
 
