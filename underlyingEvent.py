@@ -1,4 +1,4 @@
-#import ROOT
+:q#import ROOT
 import uproot
 #from ROOT import RDataFrame
 import numpy as np

@@ -1,34 +1,28 @@
 #import ROOT
 import uproot
-#from ROOT import RDataFrame
-#import pandas as pd
-#import awkard as ak
-#import TensorFlow as tf
-import numpy
+import numpy as np
 import sys
 #'root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root'
 
 nano_file= uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
-#keys = nano_file.GetlistOfKeys()
-#for key in keys:
-#   obj = key.ReadObj()             # Read the object corresponding to the key
-#   if isinstance(obj, ROOT.TTree): # Check if the object is a TTree
-#           print(obj.GetName())
 
-# Define your list of cut conditions
-cut_conditions = [
-    "PFCands_pdgId = 13",  # Select events 
-    #"abs(Muon_eta) < 2.4",  # Select 
-    #"muon_charge == -1"  # Select eveevents = nano_file["Events"]
-
-]
-numpy.set_printoptions(threshold=sys.maxsize)
-#combined_cut_condition = " & ".join(cut_conditions)
 events = nano_file["Events"]
 pf_id = events["PFCands_pdgId"].array(library = "np")
-pf_phi = events["PFCands_phi"].array(library = "np")
-pf_eta = events["PFCands_eta"].array(library = "np")
-pf_m = events["PFCands_mass"].arrays(library = "np")
+
+# Define a function to check if an event contains exactly two muons
+def contains_two_muons(event):
+    muon_count = np.sum(np.abs(event) == 13)                                        #Count the number of muons (pdgId = 13)
+    return muon_count == 2
 
 
-print(pf_id.tolist())
+events_with_two_muons = [event for event in pf_id if contains_two_muons(event)]     #Filter the pf_id array to select events with two muons
+
+event_array=[]                                                                                       
+for idx, event in enumerate(events_with_two_muons):                                 #Print the filtered events
+    #print(f"Event {idx + 1}: {event}")
+    event_array.append(events_with_two_muons)
+
+print("Total number of events in file: ",events.num_entries)
+print("Total number of events with exactly 2 muons: ", len(events_with_two_muons))   
+    
+
