@@ -1,6 +1,9 @@
 import uproot
 import numpy as np
 from ROOT import TLorentzVector
+import tensorflow as tf 
+from sklearn.model_selection import train_test_split
+
 #import tensorflow as tf
 #from sklearn.model_selection import train_test_split
 
@@ -10,14 +13,14 @@ from ROOT import TLorentzVector
 #########################################
 file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
 tree = file["Events"]
-tree.show()
+#tree.show()
 data = tree.arrays(["PFCands_pdgId", 
                     "PFCands_pt",
                     "PFCands_eta",
                     "PFCands_phi",
                     "PFCands_mass",
                     "PFCands_dz",
-                    ], entry_stop=50, library="np")
+                    ], entry_stop=5000, library="np")
 
 #########################################
 #Extracts as individual arrays
@@ -34,15 +37,18 @@ dz_array = data["PFCands_dz"]
 # Initialize an empty list to store particles.
 # This is in case I want to print values. Does no calculations
 #########################################
-
 muon_particles = np.empty((0, 4))   
 non_muon_particles = np.empty((0, 4))  
+
 
 #########################################
 # Iterate over each event in the arrays
 # and makes relevant cuts on pT and eta
 #########################################
 
+muon_pz_array = []
+non_muon_pz_array=[]
+# Iterate over each event in the arrays
 for event, pdgIds, pt, eta, phi, mass in zip(pt_array, pdgId_array, pt_array, eta_array, phi_array, mass_array):
     # Count the number of muons in the event
     num_muons = np.sum(abs(pdgIds == 13))
@@ -55,15 +61,10 @@ for event, pdgIds, pt, eta, phi, mass in zip(pt_array, pdgId_array, pt_array, et
             # Check if the particle is a muon and applies some cuts
             if abs(pdgId) == 13: 
                 if abs(pt_val) > 2.0 and abs(eta_val) < 2.5: 
-
-                    #Contstructs TLorentz vector for muons
                     tlv_muon = TLorentzVector()
                     tlv_muon.SetPtEtaPhiM(pt_val, eta_val, phi_val, mass_val)
-                    #tlv_muon.SetPz(pt_val * np.sinh(eta_val))
-                    
+                    muon_pz_array.append(tlv_muon.Pz())  # Append the muon momentum component to the list
 
-                    muon_particles = np.append(muon_particles, [[pt_val, pdgId, eta_val, phi_val]], axis=0)
-            
             # checks it is NOT a muon and does the same just no cuts 
             if abs(pdgId) != 13:
                 tlv_non_muon = TLorentzVector()
@@ -71,8 +72,10 @@ for event, pdgIds, pt, eta, phi, mass in zip(pt_array, pdgId_array, pt_array, et
             
                 #tlv_non_muon.SetPz(pt_val * np.sinh(eta_val))
                 pz_non_muon = tlv_non_muon.Pz()
+
                 non_muon_particles = np.append(non_muon_particles, [[pt_val, pdgId, eta_val, phi_val]], axis=0)
 
+print(len(muon_pz_array))
 #for particle in muon_particles:
 #    print("Muon eta : ",particle[2])
 #    print("Muon pt : ", particle[0])
@@ -86,41 +89,20 @@ for event, pdgIds, pt, eta, phi, mass in zip(pt_array, pdgId_array, pt_array, et
 # Start of the Model creation and tranining
 #########################################
 
-# Define custom loss function
-#def custom_loss(y_true, y_pred):
-#    # Define custom logic for loss calculation
-#    custom_loss_value = tf.reduce_mean(tf.abs(y_true - y_pred))  # Example: Mean Absolute Error
-#    return custom_loss_value
+X_train, X_test = train_test_split(muon_pz_array, test_size=0.2, random_state=42)
+X_train = np.array(X_train).reshape(-1, 1)
+X_test = np.array(X_test).reshape(-1, 1)
 
-#X = []  # List to store z-momentum of non-muon particles
-#y = []  # List to store z-momentum of Z-boson particles
-#
-#for tlv_non_muon in non_muon_particles:
-#    # Extract z-momentum
-#    pz_non_muon = tlv_non_muon.Pz()
-#    X.append([pz_non_muon])  # Append z-momentum to input features
-#    # Assuming you have the z-momentum of Z-boson particles stored somewhere
-#    y.append(z_boson_pz)  # Append z-momentum of Z-boson as target
-#
-## Converts lists to numpy arrays
-#X = np.array(X)
-#y = np.array(y)
-#
-## Split data into training and testing sets
-#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-#
-## Build the Model
-#model = tf.keras.Sequential([
-#    tf.keras.layers.Dense(units=64, activation='relu', input_shape=[1]),  # Input layer
-#    tf.keras.layers.Dense(units=32, activation='relu'),  # Hidden layer 1
-#    tf.keras.layers.Dense(units=16, activation='relu'),  # Hidden layer 2
-#    tf.keras.layers.Dense(units=1)  # Output layer
-#])
-#
-## Compiles the Model
-#model.compile(optimizer='adam', loss='custom_loss_value')
-#
-## Train the Model
-#model.fit(X_train, y_train, epochs=10, batch_size=32, verbose=1)
+# Build the model
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(units=120, activation='relu'), 
+    tf.keras.layers.Dense(units=60, activation='relu'), 
+    tf.keras.layers.Dense(units=20, activation='relu'),
+    tf.keras.layers.Dense(units=1)  
+])
 
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
+# Train the model
+model.fit(X_train, X_train, epochs=50, batch_size=32, verbose=2)
