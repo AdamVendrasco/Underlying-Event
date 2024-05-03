@@ -1,126 +1,108 @@
-import numpy as np
-import ROOT
 import uproot
+import numpy as np
 from ROOT import TLorentzVector
-
-######################################################
-# Open the ROOT file and retrieves important info data
-######################################################
-
-nano_file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
-events = nano_file["Events"]
-pf_pt = events["PFCands_pt"].array(entry_stop=50)
-pf_phi = events["PFCands_phi"].array(entry_stop=50)
-pf_eta = events["PFCands_eta"].array(entry_stop=50)
-pf_mass = events["PFCands_mass"].array(entry_stop=50)
-pf_dz = events["PFCands_dz"].array(entry_stop=50)
-
-######################################################
-# Definitions for the cuts on the data
-######################################################
-
-# Function to check if an event contains exactly two muons
-def contains_two_muons(event):
-    muon_count = np.sum(np.abs(event) == 13)
-    return muon_count == 2
-
-# Function to apply a pT cut of 2.0 GeV
-def pt_cuts(event):
-    muon_indices = np.where(np.abs(event) == 13)
-    muon_pts = event[muon_indices]
-    pt1, pt2 = muon_pts
-    if pt1 > 2.0 and pt2 > 2.0:
-        return True
-    return False
-
-# Function to filter PF muons
-def filter_pf_muons(event):
-    return [pfcand for pfcand in event if abs(pfcand) == 13]
-
-# Function to filter other PF candidates and pad arrays to a fixed length
-def filter_other_particles(event, max_length):
-    other_particles = [pfcand for pfcand in event if abs(pfcand) != 13]
-    padded_particles = other_particles + [0] * (max_length - len(other_particles))
-    return padded_particles
-
-######################################################
-# Start of the cuts on the data
-######################################################
-
-# Filter events based on pdgid (making sure 2 muons exactly and taking those events)
-two_muon_events = [event for event in events["PFCands_pdgId"].array(entry_stop=50) if contains_two_muons(event)]
-
-# Filter events by pT cut
-two_muon_pt_cut_events = [event for event in two_muon_events if np.any(pt_cuts(event))]
+import tensorflow as tf 
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
+#import tensorflow as tf
+#from sklearn.model_selection import train_test_split
 
-# Filter events to separate PF muons and other particles of those 2 muon events
-# Also making sure the event list has the same length so I can "pad" the arrays later
-filtered_muon_events = []
-for event in two_muon_pt_cut_events:
-    filtered_event = filter_pf_muons(event)
-    filtered_muon_events.append(filtered_event)
+#########################################
+# Opens and reads in data as numpy arrays
+#########################################
 
+file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
+tree = file["Events"]
+#tree.show()
+data = tree.arrays(["PFCands_pdgId", 
+                    "PFCands_pt",
+                    "PFCands_eta",
+                    "PFCands_phi",
+                    "PFCands_mass",
+                    "PFCands_dz",
+                    ], entry_stop=500, library="np")
 
-# Calculate the maximum length of other particles in filtered_muon_events
-max_other_length = max(len(event) for event in filtered_muon_events)
+#########################################
+#Extracts as individual arrays
+#########################################
+pt_array = data["PFCands_pt"]
+pdgId_array = data["PFCands_pdgId"]
+eta_array = data["PFCands_eta"]
+phi_array = data["PFCands_phi"]
+mass_array = data["PFCands_mass"]
+dz_array = data["PFCands_dz"]
+combined_pz=0.0
 
-
-
-# Filter other particles in each event in two_muon_pt_cut_events and store in filtered_other_events
-filtered_other_events = []
-for event in two_muon_pt_cut_events:
-    filtered_event = filter_other_particles(event, max_other_length)
-    filtered_other_events.append(filtered_event)
-
-
-# Recalculate the maximum length of other particles in filtered_other_events
-max_other_length = max(len(event) for event in filtered_other_events)
-
-
-# Pad all lists inside filtered_other_events to have the same length
-filtered_other_events_padded = []
-for event in filtered_other_events:
-    padded_event = filter_other_particles(event, max_other_length)
-    filtered_other_events_padded.append(padded_event)
-
-# Convert each padded event into a numpy array individually
-other_events_array = []
-other_events_pt_array=[]
-for i in filtered_other_events_padded:
-    numpy_event = np.array(event)
-    other_events_array.append(numpy_event)
-    
+#########################################
+# Initialize an empty list to store particles.
+# This is in case I want to print values. Does no calculations
+#########################################
+muon_particles = np.empty((0, 4))   
+non_muon_particles = np.empty((0, 4))  
 
 
+#########################################
+# Iterate over each event in the arrays
+# and makes relevant cuts on pT and eta
+#########################################
 
-other_events_array = np.array(other_events_array)
-muon_events_array = np.array(filtered_muon_events)
+muon_pz_array = []
+non_muon_pz_array=[]
+labels=[]
+# Initialize an empty list to store labels
+labels = []
 
-print("Total number of events in file:", events.num_entries)
-print("Total number of two_muon_events:", len(two_muon_events))
-print("Total number of two_muon_pt_cut_events:", len(two_muon_pt_cut_events))
-print("Total number of muon_events_array:", len(muon_events_array))
-print("Total number of filtered_other_events:", len(filtered_other_events))
-print("other_events_array: ", len(other_events_array))
+# Iterate over each event in the arrays
+for event, pdgIds, pt, eta, phi, mass in zip(pt_array, pdgId_array, pt_array, eta_array, phi_array, mass_array):
+    # Count the number of muons in the event
+    num_muons = np.sum(abs(pdgIds == 13))
 
-######################################################
-# Start to construct the TLorentz Vectors (these will be the input into my model)
-######################################################
+    # Check if the number of muons is exactly 2
+    if num_muons == 2:
+        # Initialize combined z-momentum
+        combined_pz = 0.0
+        
+        # Iterate over each particle in the event
+        for pt_val, pdgId, eta_val, phi_val, mass_val in zip(pt, pdgIds, eta, phi, mass):
+            
+            # Check if the particle is a muon and applies some cuts
+            if abs(pdgId) == 13: 
+                if abs(pt_val) > 2.0 and abs(eta_val) < 2.5: 
+                    tlv_muon = TLorentzVector()
+                    tlv_muon.SetPtEtaPhiM(pt_val, eta_val, phi_val, mass_val)
+                    combined_pz += tlv_muon.Pz()  # Add muon's pz to combined_pz
+        
+        # Append combined z-momentum to labels list
+        labels.append(combined_pz)
 
+# Convert labels to numpy array
+labels = np.array(labels)
 
-print(other_events_array)
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(muon_pz_array, labels, test_size=0.2, random_state=42)
 
+# Build the model
+model = tf.keras.Sequential([
+    tf.keras.layers.Dense(units=120, activation='relu'), 
+    tf.keras.layers.Dense(units=60, activation='relu'), 
+    tf.keras.layers.Dense(units=20, activation='relu'),
+    tf.keras.layers.Dense(units=1)  
+])
 
+# Compile the model
+model.compile(optimizer='adam', loss='mean_squared_error')
 
-tlv = TLorentzVector()
-#for evenet in muon_events_array:
- #   tlv.SetPtEtaPhiM()
+# Train the model
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=2)
 
+# Evaluate the model on the test set
+mse = model.evaluate(X_test, y_test, verbose=0)
 
-
-
-
-
-
+# Plot the training loss
+plt.plot(history.history['loss'])
+plt.title('Model Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
