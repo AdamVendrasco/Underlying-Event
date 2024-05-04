@@ -6,8 +6,6 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 
 
-#import tensorflow as tf
-#from sklearn.model_selection import train_test_split
 
 #########################################
 # Opens and reads in data as numpy arrays
@@ -21,7 +19,7 @@ data = tree.arrays(["PFCands_pdgId",
                     "PFCands_phi",
                     "PFCands_mass",
                     "PFCands_dz",
-                    ], entry_stop=100, library="np")
+                    ],library="np",entry_stop =40)
 
 #########################################
 #Extracts as individual arrays
@@ -41,7 +39,7 @@ combined_pz=0.0
 muon_particles = np.empty((0, 4))   
 non_muon_particles = np.empty((0, 4))  
 
-#
+
 #########################################
 # Iterate over each event in the arrays
 # and makes relevant cuts on pT and eta
@@ -95,26 +93,36 @@ y_test = np.array(labels)
 
 
 # Build the model
+# Build the model
+#model = tf.keras.Sequential([
+#    tf.keras.layers.Dense(units=120, activation='relu'),
+#    tf.keras.layers.Dense(units=60, activation='relu'),
+#    tf.keras.layers.Dense(units=60, activation='sigmoid'), 
+#    tf.keras.layers.Dense(units=30, activation='relu'),
+#    tf.keras.layers.Dense(units=1)
+#])
+
 model = tf.keras.Sequential([
-    tf.keras.layers.Dense(units=120, activation='relu'), 
-    tf.keras.layers.Dense(units=60, activation='relu'),
-    #tf.keras.layers.Dense(units=60, activation='sigmoid'), 
-    #tf.keras.layers.Dense(units=30, activation='relu'),
-    tf.keras.layers.Dense(units=1)  
+    tf.keras.layers.Dense(300, activation='relu'),
+    tf.keras.layers.Dense(300, activation='relu'),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dense(1, activation='relu')
 ])
 
+# Compile the model
+#model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
 # Compile the modelc;
 model.compile(optimizer='adam', loss='mean_squared_error')
-
 # Train the model
-history = model.fit(X_train, y_train, epochs=50, batch_size=20, verbose=2)
-
+history = model.fit(X_train, y_train, epochs=10, batch_size=20, verbose=2)
 # Evaluate the model on the test set
 mse = model.evaluate(X_test, y_test, verbose=0)
-
 # Plot the training loss
-plt.plot(history.history['loss'])
+#plt.plot(history.history['accuracy'])
+#plt.plot(history.history['loss'])
 plt.title('Model Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.show()
+plt.savefig('foo.png')
