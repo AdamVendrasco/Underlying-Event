@@ -4,7 +4,7 @@ from ROOT import TLorentzVector
 import tensorflow as tf 
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-#test
+
 
 #import tensorflow as tf
 #from sklearn.model_selection import train_test_split
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 # Opens and reads in data as numpy arrays
 #########################################
 
-file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
+file = uproot.open("nano_data2016_1.root")
 tree = file["Events"]
 data = tree.arrays(["PFCands_pdgId", 
                     "PFCands_pt",
