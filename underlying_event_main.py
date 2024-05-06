@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 #########################################
 # Opens and reads in data as numpy arrays
 #########################################
-file = uproot.open("nano_data2016_1.root")
+file = uproot.open("/nfs/home/avendras/nano_data2016_1.root")
 tree = file["Events"]
 #tree.show()
 data = tree.arrays(["PFCands_pdgId",
@@ -17,7 +17,7 @@ data = tree.arrays(["PFCands_pdgId",
                     "PFCands_phi",
                     "PFCands_mass",
                     "PFCands_dz",
-                    ], entry_stop=100, library="np")
+                    ], entry_stop=500, library="np")
 #########################################
 # Extracts as individual arrays
 #########################################
@@ -71,15 +71,21 @@ print(len(muon_pz_array))
 # Start of the Model creation and training
 #########################################
 X_train, X_test, y_train, y_test = train_test_split(muon_pz_array, labels, test_size=0.2, random_state=42)
+
 X_train = np.array(muon_pz_array).reshape(-1, 1)
 X_test = np.array(muon_pz_array).reshape(-1, 1)
 y_train = np.array(labels)
 y_test = np.array(labels)
+
 model = tf.keras.Sequential([
     tf.keras.layers.Dense(units=1000, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dense(units=500, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dense(units=550, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dense(units=200, activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Dense(units=1)
 ])
 # Compile the model with custom linear regression loss function
@@ -97,12 +103,13 @@ plt.scatter(y_test, y_pred)
 plt.xlabel('True Labels')
 plt.ylabel('Predicted Labels')
 plt.title('True vs. Predicted Labels')
-plt.show()
+#plt.show()
+plt.savefig("prediction.png")
 
 # Plot the training loss
 plt.plot(history.history['loss'])
 plt.title('Model Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
-plt.show()
-
+#plt.show()
+plt.savefig("model_loss.png")
