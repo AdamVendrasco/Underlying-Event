@@ -15,7 +15,7 @@ data = tree.arrays(["PFCands_pdgId",
                     "PFCands_phi", 
                     "PFCands_mass"], entry_stop=50000, library="np")
 
-# Extract data as individual numpy arrays
+# Extracts the data as individual arrays
 pdgId_array = data["PFCands_pdgId"]
 pt_array = data["PFCands_pt"]
 eta_array = data["PFCands_eta"]
@@ -50,15 +50,15 @@ combined_non_muon_pz_array = np.array(non_muon_pz_list)
 print(combined_muon_pz_array.shape)
 print(combined_non_muon_pz_array.shape)
 
-# Pad the smaller array with zeros to match the length of the larger array
+# Pads the smaller array(muons) with zeros to match the length of the larger array(non_muons)
 size_difference = len(combined_muon_pz_array) - len(combined_non_muon_pz_array)
 if size_difference > 0:
     combined_non_muon_pz_array = np.pad(combined_non_muon_pz_array, (0, size_difference), mode='constant', constant_values=0)
 
-# Split the dataset
+# Splits the non_muon dataset and uses the muon dataset as labels
 X_train, X_test, y_train, y_test = train_test_split(combined_non_muon_pz_array, combined_muon_pz_array, test_size=0.2, random_state=42)
 
-# Define and compile a neural network model
+# Defines a standard DNN
 model = tf.keras.Sequential([
     tf.keras.layers.Dense(1000, activation='relu', input_shape=(1,)),
     #tf.keras.layers.BatchNormalization(),
@@ -73,13 +73,13 @@ model = tf.keras.Sequential([
     tf.keras.layers.Dense(1)
 ])
 
-# Compile the model with custom linear regression loss function
+# Compiles the model
 model.compile(optimizer='adam', loss="mean_squared_error")
 
-# Train the model
+# Trains the model
 history = model.fit(X_train, y_train, epochs=100, batch_size=100, verbose=2)
 
-# Evaluate the model on the test set
+# Evaluates the model on the test set
 mse = model.evaluate(X_test, y_test, verbose=0)
 print("Mean Squared Error on Test Set:", mse)
 
