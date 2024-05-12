@@ -105,7 +105,7 @@ model.compile(optimizer =
         tf.keras.optimizers.Adam(learning_rate=learning_rate),loss="mean_absolute_error")
 history = model.fit(X_train, y_train, epochs=30, batch_size=300, verbose=2, validation_data=(X_test, y_test))
 mae = model.evaluate(X_test, y_test, verbose=0)
-print("Mean Squared Error on Test Set:", mae)
+print("Mean Absolute Error:", mae)
 train_loss = history.history['loss']
 val_loss = history.history['val_loss']
 y_pred = model.predict(X_test)
@@ -119,9 +119,7 @@ plt.scatter(y_test, y_pred,s=1,color='orange')
 plt.xlabel('True Labels')
 plt.ylabel('Predicted Labels')
 plt.title('True vs. Predicted Labels')
-plt.xlim(0,30)
-plt.ylim(0,30)
-plt.savefig("zoom test_test_git_prediction_" + architecture_details + ".png")
+plt.savefig("prediction" + architecture_details + ".png")
 plt.show()
 
 plt.figure()
