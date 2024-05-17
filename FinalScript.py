@@ -9,6 +9,7 @@ import tensorflow as tf
 # Open and read data from the ROOT file
 # /nfs/home... path is for isaac access.
 # root://eospublic path is for local access.
+
 ###########################################
 #file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
 file = uproot.open("/nfs/home/avendras/nano_data2016_1.root")
