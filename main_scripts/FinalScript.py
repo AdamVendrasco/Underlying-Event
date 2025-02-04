@@ -19,13 +19,13 @@ import tensorflow as tf
 ###########################################
 
 #file = uproot.open("root://eospublic.cern.ch//eos/opendata/cms/derived-data/PFNano/29-Feb-24/SingleMuon/Run2016G-UL2016_MiniAODv2_PFNanoAODv1/240207_205649/0000/nano_data2016_1.root")
-file = uproot.open("/nfs/home/avendras/nano_data2016_1.root")
+file = uproot.open("/nfs/home/avendras/Underlying-Event/nano_data2016_1.root")
 tree = file["Events"]
 data = tree.arrays(["PFCands_pdgId", 
                     "PFCands_pt", 
                     "PFCands_eta",
                     "PFCands_phi", 
-                    "PFCands_mass"], library="np")
+                    "PFCands_mass"],entry_stop=500 ,library="np")
 
 
 ###########################################
@@ -117,6 +117,9 @@ print("Mean Absolute Error:", mae)
 train_loss = history.history['loss']
 val_loss = history.history['val_loss']
 y_pred = model.predict(X_test)
+
+#print("y_pred:", y_pred[:10])  # Print first 10 predictions for debug
+#print("y_test:", y_test[:10])  # Print first 10 test for debug
 
 
 ###########################################

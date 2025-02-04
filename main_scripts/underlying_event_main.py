@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 #########################################
 # Opens and reads in data as numpy arrays
 #########################################
-file = uproot.open("/nfs/home/avendras/nano_data2016_1.root")
+file = uproot.open("/nfs/home/avendras/Underlying-Event/nano_data2016_1.root")
 tree = file["Events"]
 #tree.show()
 data = tree.arrays(["PFCands_pdgId",
@@ -17,7 +17,7 @@ data = tree.arrays(["PFCands_pdgId",
                     "PFCands_phi",
                     "PFCands_mass",
                     "PFCands_dz",
-                    ], entry_stop=500, library="np")
+                    ], entry_stop=100, library="np")
 #########################################
 # Extracts as individual arrays
 #########################################
