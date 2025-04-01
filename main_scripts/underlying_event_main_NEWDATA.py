@@ -14,7 +14,8 @@ from ROOT import TLorentzVector
 #########################################
 # Configuration and Selection Parameters
 #########################################
-data_file = "/nfs/home/avendras/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root"
+data_file = "/Users/adamvendrasco/underlying_event_PHY643/Underlying-Event/root_files/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root"
+#data_file = "/nfs/home/avendras/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root"
 tree_name = "Events"
 print("reading in data now:")
 branches = [
