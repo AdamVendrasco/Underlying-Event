@@ -15,13 +15,15 @@ from ROOT import TLorentzVector
 # Configuration and Selection Parameters
 #########################################
 print("Reading in data now:")
-
+print("LOOK FOR ME")
 data_files = [
-    "/lustre/isaac24/scratch/avendras/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root",
-    "/lustre/isaac24/scratch/avendras/root_files/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
-    "/lustre/isaac24/scratch/avendras/root_files/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
-    "/lustre/isaac24/scratch/avendras/root_files/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root"
+    "/app/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root"
+    "/app/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root",
+    "/app/Underlying-Event/root_files/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
+    "/app/Underlying-Event/root_files/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
+    "/app/Underlying-Event/root_files/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root"
 ]
+output_dir = "/app/Underlying-Event/plots/"
 
 tree_name = "Events"
 print("Reading in data from multiple files now:")
@@ -33,11 +35,11 @@ branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fM",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.vertex_.fCoordinates.fZ"
 ]
-entry_stop = 5000  
+entry_stop = None  
 
 # Event selection parameters
 min_Muon_pT = 20.0              # Minimum muon pT (GeV)
-z_mass_window = (85.0, 95.0)      # Allowed invariant mass window for Z candidate (GeV)
+z_mass_window = (85.0, 95.0)    # Allowed invariant mass window for Z candidate (GeV)
 dZ_threshold = 0.1              # Maximum allowed dz difference for same vertex
 max_num_nonMuons = 200          # Maximum number of non-muon candidates per event
 features_per_particle = 4       # Features per candidate: [pt, eta, phi, mass]
@@ -182,13 +184,20 @@ def build_model(input_dim: int):
     return model
 
 #########################################
-# Data Evaluation Functions
+# Evaluation Function
 #########################################
-def evaluate_correlation(y_true, y_pred):
+def evaluate_correlation(y_true, y_pred, filename="correlation.txt"):
     y_pred = np.array(y_pred).flatten()
     corr_matrix = np.corrcoef(y_true, y_pred)
     correlation = corr_matrix[0, 1]
     print("Pearson Correlation Coefficient:", correlation)
+
+    # Save correlation value to a file
+    correlation_file = os.path.join(output_dir, filename)
+    with open(correlation_file, "w") as f:
+        f.write(f"Pearson Correlation Coefficient: {correlation}\n")
+
+    print("Correlation saved:", correlation_file)
     return correlation
 
 #########################################
@@ -200,8 +209,9 @@ def plot_predictions(y_true, y_pred, filename="prediction_main.png"):
     plt.xlabel('True Labels (Sum of Muon Pz)')
     plt.ylabel('Predicted Labels')
     plt.title('True vs. Predicted Labels')
-    plt.savefig(filename)
-    print("Plot saved:", filename)
+    filepath = os.path.join(output_dir, filename)
+    plt.savefig(filepath)
+    print("Plot saved:", filepath)
     plt.close()
 
 def plot_training_loss(history, filename="model_loss_main.png"):
@@ -210,8 +220,9 @@ def plot_training_loss(history, filename="model_loss_main.png"):
     plt.title('Model Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
-    plt.savefig(filename)
-    print("Plot saved:", filename)
+    filepath = os.path.join(output_dir, filename)
+    plt.savefig(filepath)
+    print("Plot saved:", filepath)
     plt.close()
 
 def plot_loss(history, filename="loss_plot.png"):
@@ -223,8 +234,9 @@ def plot_loss(history, filename="loss_plot.png"):
     plt.ylabel('Loss')
     plt.title('Training vs. Validation Loss')
     plt.legend()
-    plt.savefig(filename)
-    print("Plot saved:", filename)
+    filepath = os.path.join(output_dir, filename)
+    plt.savefig(filepath)
+    print("Plot saved:", filepath)
     plt.close()
 
 #########################################
@@ -249,11 +261,12 @@ def main():
     history = model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=2, validation_split=0.2)
     mse = model.evaluate(X_test, y_test, verbose=0)
     print("Mean Squared Error on Test Set:", mse)
+    
     y_pred = model.predict(X_test)
-    evaluate_correlation(y_test, y_pred)
-    plot_predictions(y_test, y_pred)
-    plot_training_loss(history)
-    plot_loss(history)
+    evaluate_correlation(y_test, y_pred, filename="correlation.txt")
+    plot_predictions(y_test, y_pred, filename="prediction_main.png")
+    plot_training_loss(history, filename="model_loss_main.png")
+    plot_loss(history, filename="loss_plot.png")
 
 if __name__ == '__main__':
     main()
