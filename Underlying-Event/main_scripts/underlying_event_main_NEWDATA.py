@@ -4,6 +4,7 @@ import uproot
 import awkward as ak
 import numpy as np
 import seaborn as sns
+import glob
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -16,13 +17,19 @@ from ROOT import TLorentzVector
 #########################################
 print("Reading in data now:")
 print("LOOK FOR ME")
+#data_files = glob.glob("/app/Underlying-Event/root_files/*.root")
+
+
+print("seeing if I can import xrootd data: ")
+
 data_files = [
-    "/app/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root"
-    "/app/Underlying-Event/root_files/002DAE91-77A7-E511-B61B-00266CFAEA48.root",
-    "/app/Underlying-Event/root_files/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
-    "/app/Underlying-Event/root_files/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
-    "/app/Underlying-Event/root_files/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root"
-]
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root",
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/002DAE91-77A7-E511-B61B-00266CFAEA48.root",
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/009E8BDD-32A7-E511-B74E-003048FFD796.root"]
+    
+print("finished root://")
 output_dir = "/app/Underlying-Event/plots/"
 
 tree_name = "Events"

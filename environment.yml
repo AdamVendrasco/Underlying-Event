@@ -17,5 +17,5 @@ dependencies:
   - vim
   - xrootd  
   - pip:
-      #- fsspec
       - uproot
+      - fsspec-xrootd
