@@ -25,10 +25,10 @@ print("seeing if I can import xrootd data: ")
 
 data_files = [
     "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/002ADEBA-30A7-E511-A6B2-0CC47A4C8E66.root",
-    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/002DAE91-77A7-E511-B61B-00266CFAEA48.root",
-    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
-    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
-    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/009E8BDD-32A7-E511-B74E-003048FFD796.root"]
+    "root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/002DAE91-77A7-E511-B61B-00266CFAEA48.root"]
+    #"root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/006E50B5-6BA7-E511-AB89-7845C4FC374C.root",
+    #"root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/008D888F-80A7-E511-B17F-0CC47A78A4A0.root",
+    #"root://eospublic.cern.ch//eos/opendata/cms/Run2015D/DoubleMuon/AOD/16Dec2015-v1/10000/009E8BDD-32A7-E511-B74E-003048FFD796.root"]
     
 print("finished root://")
 output_dir = "/app/Underlying-Event/plots/"
@@ -59,13 +59,17 @@ def list_available_branches(file_path: str, tree_name: str) -> None:
     """
     Prints all available branch names in a given ROOT file.
     """
-    with uproot.open(file_path) as file:
+    try:
         print(f"Trying to open file: {file_path}")
-        tree = file[tree_name]
-        branch_names = tree.keys()
-        print("Available branches in the ROOT file:")
-        for branch in branch_names:
-            print("  ", branch)
+        with uproot.open(file_path, timeout=18000) as file:  
+            tree = file[tree_name]
+            branch_names = tree.keys()
+            print("Available branches in the ROOT file:")
+            for branch in branch_names:
+                print("  ", branch)
+    except Exception as e:
+        print("Error opening file:", e)
+
 
 def load_data(file_paths: list, tree_name: str, branches: list, entry_stop: int = None):
    
@@ -198,14 +202,7 @@ def evaluate_correlation(y_true, y_pred, filename="correlation.txt"):
     y_pred = np.array(y_pred).flatten()
     corr_matrix = np.corrcoef(y_true, y_pred)
     correlation = corr_matrix[0, 1]
-    print("Pearson Correlation Coefficient:", correlation)
-
-    # Save correlation value to a file
-    correlation_file = os.path.join(output_dir, filename)
-    with open(correlation_file, "w") as f:
-        f.write(f"Pearson Correlation Coefficient: {correlation}\n")
-
-    print("Correlation saved:", correlation_file)
+    print("Pearson Correlation Coefficient:" , correlation)
     return correlation
 
 #########################################
@@ -233,7 +230,7 @@ def plot_training_loss(history, filename="model_loss_main.png"):
     print("Plot saved:", filepath)
     plt.close()
 
-def plot_loss(history, filename="loss_plot.png"):
+def plot_loss(history, filename="loss_plot.png"): 
     plt.figure()
     plt.plot(history.history['loss'], label='Training Loss')
     if 'val_loss' in history.history:

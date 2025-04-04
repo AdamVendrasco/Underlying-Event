@@ -10,7 +10,7 @@ dependencies:
   - matplotlib
   - seaborn
   - root
-  - scikit-learn
+  - scikit-learnc
   - pandas
   - awkward
   - pip

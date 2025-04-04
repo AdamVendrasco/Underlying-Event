@@ -1,0 +1,13 @@
+# requirements.txt
+numpy
+scipy
+tensorflow
+matplotlib
+seaborn
+scikit-learn
+pandas
+awkward
+uproot
+fsspec-xrootd
+XRootD
+
