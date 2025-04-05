@@ -16,7 +16,7 @@ COPY Underlying-Event /app/Underlying-Event
 COPY entry.sh /app/entry.sh
 
 WORKDIR /app
-RUN mkdir -p /app/Underlying-Event/root_files/ /app/Underlying-Event/plots/
+RUN mkdir -p /app/Underlying-Event/plots/
 RUN chmod +x /app/entry.sh
 
 CMD ["/app/entry.sh"]
