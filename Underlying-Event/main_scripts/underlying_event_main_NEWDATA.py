@@ -6,6 +6,7 @@ import awkward as ak
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from ROOT import TLorentzVector
 
@@ -33,7 +34,7 @@ Z_MASS_WINDOW = (85.0, 95.0)   # Z candidate mass window in GeV
 DZ_THRESHOLD = 0.1           # Max allowed dz difference between muons
 MAX_NUM_NONMUONS = 200       # Maximum non-muon candidates per event
 FEATURES_PER_PARTICLE = 4    # [pt, eta, phi, mass]
-MAX_FILES_TO_READ = 3      # Limit the number of files processed
+MAX_FILES_TO_READ = 1     # Limit the number of files processed
 
 #########################################
 # File Loading Functions
@@ -161,6 +162,27 @@ def process_events(data):
     print("Selected events:", total_selected_events)
     return event_inputs, event_targets, invariant_masses, z_pt_list, z_pz_list, z_phi_list, z_eta_list
 
+def save_events_to_csv(event_inputs, event_targets, filename="filtered_events.csv"):
+    """
+    Save filtered events to a CSV file.
+    
+    Parameters:
+      event_inputs: List of lists containing event features.
+      event_targets: List containing event target values.
+      filename: Name of the CSV file to save.
+    """
+    num_features = MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE
+    
+    columns = [f"feature_{i}" for i in range(num_features)]
+    
+    df = pd.DataFrame(event_inputs, columns=columns)
+    
+    df["target"] = event_targets
+    df.to_csv(filename, index=False)
+    print("Saved filtered events to:", filename)
+
+
+
 #########################################
 # Model Building and Evaluation
 #########################################
@@ -220,8 +242,13 @@ def main():
     if not event_inputs:
         raise ValueError("No events passed the Z selection criteria.")
 
-    X = np.array(event_inputs)
-    y = np.array(event_targets)
+    csv_filename = "filtered_Z_events.csv"
+    save_events_to_csv(event_inputs, event_targets, csv_filename)
+
+    df = pd.read_csv(csv_filename)
+    X = df.drop(columns=["target"]).values
+    y = df["target"].values
+  
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
     
     model = build_model(input_dim=MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE)
