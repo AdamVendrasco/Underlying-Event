@@ -1,4 +1,5 @@
 *.root
 *.png
 *.pdf
+.globus
 root_files/
