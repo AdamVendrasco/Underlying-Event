@@ -13,10 +13,10 @@ RUN pip install --upgrade pip && pip install -r /app/requirements.txt \
 
 #COPY .globus /app/Underlying-Event/.globus
 COPY Underlying-Event /app/Underlying-Event
+COPY Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt  /app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt
 COPY entry.sh /app/entry.sh
 
-WORKDIR /app
-#RUN mkdir -p /app/Underlying-Event/plots/
+WORKDIR /app/Underlying-Event
 RUN chmod +x /app/entry.sh
 
 CMD ["/app/entry.sh"]
