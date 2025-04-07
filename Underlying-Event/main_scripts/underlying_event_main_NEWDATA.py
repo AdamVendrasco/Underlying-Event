@@ -34,7 +34,7 @@ Z_MASS_WINDOW = (85.0, 95.0)   # Z candidate mass window in GeV
 DZ_THRESHOLD = 0.1           # Max allowed dz difference between muons
 MAX_NUM_NONMUONS = 200       # Maximum non-muon candidates per event
 FEATURES_PER_PARTICLE = 4    # [pt, eta, phi, mass]
-MAX_FILES_TO_READ = 1     # Limit the number of files processed
+MAX_FILES_TO_READ = 1        # Limit the number of files processed
 
 #########################################
 # File Loading Functions
@@ -85,13 +85,13 @@ def load_data(file_paths, tree_name, branches, entry_stop=None):
 #########################################
 def process_events(data):
     """
-     Prcess events to select Z candidates and extract features of non-muon canidates.
-     The selection cuts for the events are as follows:
-     - Select events with exactly two muons.
-     - Muon pair charges must be opposite.
-     - Muon pT > 20 GeV.
-     - Muon pair invariant mass within 85-95 GeV 
-     - Muon pair dz difference < 0.1 cm
+    Process events to select Z candidates and extract features of non-muon candidates.
+    The selection cuts for the events are:
+      - Select events with exactly two muons.
+      - Muon pair charges must be opposite.
+      - Muon pT > 20 GeV.
+      - Muon pair invariant mass within 85-95 GeV.
+      - Muon pair dz difference < 0.1 cm.
     """
     event_inputs, event_targets = [], []
     invariant_masses = []  
@@ -112,6 +112,7 @@ def process_events(data):
         event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex = event
         muon_vectors, muon_charges, muon_vertex_z = [], [], []
 
+        # Loop over particles in the event
         for pdgId, pt_val, eta_val, phi_val, mass_val, vertex_z in zip(
             event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex
         ):
@@ -122,11 +123,13 @@ def process_events(data):
                 muon_charges.append(np.sign(pdgId))
                 muon_vertex_z.append(vertex_z)
 
+        # Ensure exactly two muons with opposite charges and similar vertex positions
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
         if abs(muon_vertex_z[0] - muon_vertex_z[1]) > DZ_THRESHOLD:
             continue
 
+        # Create Z candidate from the two muons
         z_candidate = muon_vectors[0] + muon_vectors[1]
         z_mass = z_candidate.M()
         if not (Z_MASS_WINDOW[0] <= z_mass <= Z_MASS_WINDOW[1]):
@@ -140,6 +143,7 @@ def process_events(data):
 
         muon_pz_sum = muon_vectors[0].Pz() + muon_vectors[1].Pz()
 
+        # Collect non-muon features from the event
         nonmuon_features = []
         for pdgId, pt_val, eta_val, phi_val, mass_val in zip(
             event_pdgIds, event_pt, event_eta, event_phi, event_mass
@@ -152,7 +156,8 @@ def process_events(data):
         event_vector = []
         for i in range(min(num_nonmuons, MAX_NUM_NONMUONS)): 
             start = i * FEATURES_PER_PARTICLE
-            event_vector.extend(nonmuon_features[start:start + FEATURES_PER_PARTICLE]) #Keras expects fixed-length flat vectors
+            event_vector.extend(nonmuon_features[start:start + FEATURES_PER_PARTICLE])
+        # Pad vector with zeros if fewer than MAX_NUM_NONMUONS
         event_vector.extend([0.0] * (MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE - len(event_vector)))
 
         event_inputs.append(event_vector)
@@ -172,16 +177,12 @@ def save_events_to_csv(event_inputs, event_targets, filename="filtered_events.cs
       filename: Name of the CSV file to save.
     """
     num_features = MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE
-    
     columns = [f"feature_{i}" for i in range(num_features)]
     
     df = pd.DataFrame(event_inputs, columns=columns)
-    
     df["target"] = event_targets
     df.to_csv(filename, index=False)
     print("Saved filtered events to:", filename)
-
-
 
 #########################################
 # Model Building and Evaluation
@@ -233,10 +234,11 @@ def plot_training_loss(history):
 # Main Execution
 #########################################
 def main():
+    # Load data files and list branches
     data_files = get_data_files()
     list_available_branches(data_files[0], TREE_NAME)
-    
     data = load_data(data_files, TREE_NAME, BRANCHES, entry_stop=ENTRY_STOP)
+    
     results = process_events(data)
     event_inputs, event_targets, _, _, _, _, _ = results
     if not event_inputs:
