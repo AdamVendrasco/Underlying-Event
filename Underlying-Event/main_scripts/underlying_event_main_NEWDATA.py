@@ -13,7 +13,7 @@ from ROOT import TLorentzVector
 #########################################
 # Configuration
 #########################################
-FILE_INDEX_PATH = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+FILE_INDEX_PATH = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
 #check 
 OUTPUT_DIR = "/app/Underlying-Event/Underlying-Event/"
 
