@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import os
 import uproot
 import awkward as ak
@@ -11,14 +10,10 @@ from sklearn.model_selection import train_test_split
 from ROOT import TLorentzVector
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-#########################################
-# Configuration
-#########################################
-FILE_INDEX_PATH = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-OUTPUT_DIR = "/app/Underlying-Event/Underlying-Event/"
-
-TREE_NAME = "Events"
-BRANCHES = [
+file_index_path = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+output_direcotry = "/app/Underlying-Event/Underlying-Event/"
+tree_name = "Events"
+branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fPt",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fEta",
@@ -27,64 +22,68 @@ BRANCHES = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.vertex_.fCoordinates.fZ"
 ]
 
-# Use step to define the chunk size when iterating (number of events per chunk)
-CHUNK_SIZE = 1000
-
-MIN_MUON_PT = 20.0
-Z_MASS_WINDOW = (85.0, 95.0)
-DZ_THRESHOLD = 0.1
-MAX_NUM_NONMUONS = 200
-FEATURES_PER_PARTICLE = 4
+iteration_chuck_size = 1000 # Number of events per chunk
+min_muon_pT = 20.0          # Minimum transverse momentum for a muon
+z_mass_range = (85.0, 95.0)  # Z candidate mass window (GeV)
+dz_threshold = 0.1          # Maximum allowed difference in muon vertex z positions
+max_number_Non_Muons = 200      # Maximum number of non-muon particles per event
+particle_features = 4   # Number of features per particle (pt, eta, phi, mass)
 
 #########################################
 # Event Processing Function
 #########################################
 def process_events(data):
     """
-    Process events to select Z candidates and extract features from non-muon candidates.
-    Returns a tuple:
-       (event_inputs, event_targets, invariant_masses, z_pt_list, z_pz_list, z_phi_list, z_eta_list)
+    Process a chunk of events to select Z candidate events and extract features from non-muon candidates.
+    Returns:
+        A tuple containing:
+        - event_inputs: List of feature lists for each event.
+        - event_targets: List of target values (sum of muon Pz) for each event.
+        - invariant_masses: List of invariant masses of the selected Z candidates.
+        - z_pt_list: List of Z candidate transverse momenta.
+        - z_pz_list: List of Z candidate Pz values.
+        - z_phi_list: List of Z candidate azimuthal angles.
+        - z_eta_list: List of Z candidate pseudorapidities.
     """
     event_inputs, event_targets = [], []
     invariant_masses = []  
     z_pt_list, z_pz_list, z_phi_list, z_eta_list = [], [], [], []
 
-    pdgId_array = data[BRANCHES[0]]
-    pt_array    = data[BRANCHES[1]]
-    eta_array   = data[BRANCHES[2]]
-    phi_array   = data[BRANCHES[3]]
-    mass_array  = data[BRANCHES[4]]
-    vertex_array = data[BRANCHES[5]]
+    particle_ids = data[branches[0]]
+    pts        = data[branches[1]]
+    etas       = data[branches[2]]
+    phis       = data[branches[3]]
+    masses     = data[branches[4]]
+    vertices_z = data[branches[5]]
     
-    total_events = len(pdgId_array)
-    total_selected_events = 0
-    # For debugging large runs, you can print the number of events in this chunk:
-    # print(f"Processing {total_events} events in chunk...")
-    
-    for event in zip(pdgId_array, pt_array, eta_array, phi_array, mass_array, vertex_array):
-        event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex = event
-        muon_vectors, muon_charges, muon_vertex_z = [], [], []
+    total_events = len(particle_ids)
+    selected_events = 0  # Counter for events passing selection cuts
 
-        # Process each candidate in an event looking for muons
-        for pdgId, pt_val, eta_val, phi_val, mass_val, vertex_z in zip(
-            event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex
-        ):
-            if abs(pdgId) == 13 and pt_val > MIN_MUON_PT:
+    # Loop over each event in the chunk of data
+    for evt_ids, evt_pts, evt_etas, evt_phis, evt_masses, evt_vertices in zip(
+        particle_ids, pts, etas, phis, masses, vertices_z):
+        muon_vectors = []
+        muon_charges = []
+        muon_vertex_z = []
+
+        # Loop over each candidate in the event
+        for pdgid, pt, eta, phi, mass, vertex in zip(evt_ids, evt_pts, evt_etas, evt_phis, evt_masses, evt_vertices):
+            if abs(pdgid) == 13 and pt > min_muon_pT:
                 tlv = TLorentzVector()
-                tlv.SetPtEtaPhiM(pt_val, eta_val, phi_val, mass_val)
+                tlv.SetPtEtaPhiM(pt, eta, phi, mass)
                 muon_vectors.append(tlv)
-                muon_charges.append(np.sign(pdgId))
-                muon_vertex_z.append(vertex_z)
+                muon_charges.append(np.sign(pdgid))
+                muon_vertex_z.append(vertex)
 
-        # Check for exactly two muons with opposite charge and small dz difference
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
-        if abs(muon_vertex_z[0] - muon_vertex_z[1]) > DZ_THRESHOLD:
+        if abs(muon_vertex_z[0] - muon_vertex_z[1]) > dz_threshold:
             continue
 
+        # Calculate the invariant mass of the Z candidate (sum of two muons)
         z_candidate = muon_vectors[0] + muon_vectors[1]
         z_mass = z_candidate.M()
-        if not (Z_MASS_WINDOW[0] <= z_mass <= Z_MASS_WINDOW[1]):
+        if not (z_mass_range[0] <= z_mass <= z_mass_range[1]):
             continue
 
         invariant_masses.append(z_mass)
@@ -93,85 +92,109 @@ def process_events(data):
         z_phi_list.append(z_candidate.Phi())
         z_eta_list.append(z_candidate.Eta())
 
+        # Compute sum of Pz from the muon pair (our target)
         muon_pz_sum = muon_vectors[0].Pz() + muon_vectors[1].Pz()
 
         nonmuon_features = []
-        for pdgId, pt_val, eta_val, phi_val, mass_val in zip(
-            event_pdgIds, event_pt, event_eta, event_phi, event_mass
-        ):
-            if abs(pdgId) == 13:
+        for pdgid, pt, eta, phi, mass in zip(evt_ids, evt_pts, evt_etas, evt_phis, evt_masses):
+            if abs(pdgid) == 13:
                 continue
-            nonmuon_features.extend([pt_val, eta_val, phi_val, mass_val])
+            nonmuon_features.extend([pt, eta, phi, mass])
 
-        num_nonmuons = len(nonmuon_features) // FEATURES_PER_PARTICLE
-        event_vector = []
-        for i in range(min(num_nonmuons, MAX_NUM_NONMUONS)): 
-            start = i * FEATURES_PER_PARTICLE
-            event_vector.extend(nonmuon_features[start:start + FEATURES_PER_PARTICLE])
-        event_vector.extend([0.0] * (MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE - len(event_vector)))
+        # Limit number of non-muon particles and pad if needed
+        num_particles = len(nonmuon_features) // particle_features
+        event_features = []
+        for i in range(min(num_particles, max_number_Non_Muons)): 
+            start = i * particle_features
+            event_features.extend(nonmuon_features[start:start + particle_features])
+        required_length = max_number_Non_Muons * particle_features
+        event_features.extend([0.0] * (required_length - len(event_features)))
 
-        event_inputs.append(event_vector)
+        event_inputs.append(event_features)
         event_targets.append(muon_pz_sum)
-        total_selected_events += 1
+        selected_events += 1
 
-    # Print how many events passed the selection in this chunk:
-    print("Selected events in this chunk:", total_selected_events)
-    return event_inputs, event_targets, invariant_masses, z_pt_list, z_pz_list, z_phi_list, z_eta_list
+    print("Selected events in this chunk:", selected_events)
+    return (event_inputs, event_targets, invariant_masses, 
+            z_pt_list, z_pz_list, z_phi_list, z_eta_list)
 
-#########################################
-# Parallel Processing: Processing Chunks
-#########################################
 def process_chunk(chunk_data):
     """
-    A wrapper to process a data chunk. This function is designed to be executed in a separate process.
+    Wrapper to process a chunk of data. Intended to be run in parallel  using 
+    ProcessPoolExecutor. This is a python function for parallel execution of tasks.
+
+    I think this ProcessPoolExecutor itself is a wrapper for python MPI. Need to confirm this though.... 
     """
     return process_events(chunk_data)
 
+
 #########################################
-# Save Events to CSV
+# Save Processed Events to CSV
 #########################################
-def save_events_to_csv(event_inputs, event_targets, filename="filtered_events.csv"):
-    num_features = MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE
+def save_events_to_csv(inputs, targets, filename="filtered_events.csv"):
+    """
+    I am saving to CSV so that I only push the particles I care about to the DNN.
+    I could use contunine to use the AOD format, but I am not sure how to do that currently.
+    """
+    num_features = max_number_Non_Muons * particle_features
+    # Create column names  for features
     columns = [f"feature_{i}" for i in range(num_features)]
-    df = pd.DataFrame(event_inputs, columns=columns)
-    df["target"] = event_targets
-    csv_path = os.path.join(OUTPUT_DIR, filename)
+    df = pd.DataFrame(inputs, columns=columns)
+    df["target"] = targets
+    csv_path = os.path.join(output_diretory, filename)
     df.to_csv(csv_path, index=False)
     print("Saved filtered events to:", csv_path)
 
 #########################################
-# Model Building and Evaluation Functions
+# Model Build and Evaluation tpye functions
 #########################################
 def build_model(input_dim):
+    """
+    Builds and compiles a simple regression model using TensorFlow.
+    """
     tf.keras.utils.set_random_seed(42)
     model = tf.keras.Sequential([
         tf.keras.layers.InputLayer(shape=(input_dim,)),
+        tf.keras.layers.Dense(1000),
+        tf.keras.layers.Dense(100),
         tf.keras.layers.Dense(1)
     ])
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
 
 def evaluate_correlation(y_true, y_pred):
+    """
+    Calculates and prints the Pearson correlation coefficient between true and predicted values.
+    """
     y_pred = np.array(y_pred).flatten()
     correlation = np.corrcoef(y_true, y_pred)[0, 1]
     print("Pearson Correlation Coefficient:", correlation)
     return correlation
 
-def save_plot(plt_obj, filename):
-    filepath = os.path.join(OUTPUT_DIR, filename)
-    plt_obj.savefig(filepath)
-    print("Plot saved:", filepath)
-    plt_obj.close()
+def save_plot(plot_obj, filename):
+    """
+    Saves the current plot to a file.
+    """
+    filepath = os.path.join(output_diretory, filename)
+    plot_obj.savefig(filepath)
+    print("Plot saved to:", filepath)
+    plot_obj.close()
 
-def plot_predictions(y_true, y_pred):
+def plot_predictions(true_labels, predicted_labels):
+    """
+    Creates and saves a scatter plot comparing true labels and predicted labels.
+    """
     plt.figure()
-    plt.scatter(y_true, y_pred)
+    plt.scatter(true_labels, predicted_labels)
     plt.xlabel('True Labels (Sum of Muon Pz)')
     plt.ylabel('Predicted Labels')
     plt.title('True vs. Predicted Labels')
     save_plot(plt, "prediction_main.png")
 
 def plot_training_loss(history):
+    """
+    Plots training and validation loss over epochs.
+    """
     plt.figure()
     plt.plot(history.history['loss'], label='Training Loss')
     if 'val_loss' in history.history:
@@ -183,64 +206,55 @@ def plot_training_loss(history):
     save_plot(plt, "loss_plot.png")
 
 #########################################
-# Main Execution with uproot Iterator and Parallel Chunk Processing
+# Main Execution: Load, Process, and Train
 #########################################
 def main():
-    # Get the ROOT file paths from the file index
-    with open(FILE_INDEX_PATH, "r") as f:
-        files = [line.strip() for line in f if line.strip()]
-    file_path = files[0]
-    event_inputs_all = []
-    event_targets_all = []
+    num_input_files = 1  # Adjust this to select more ROOT files
+    with open(file_index_path) as f:
+        root_files = [line.strip() for line in f if line.strip()]
+
+    file_map = {file: tree_name for file in root_files}
     
-    # Using uproot.iterate to load the ROOT file in chunks.
-    #Setting step=CHUNK_SIZE determines how many events per chunk.
     chunk_iterator = uproot.iterate(
-        file_path,
-        TREE_NAME,
-        expressions=BRANCHES,
+        files=file_map,
+        expressions=branches,
         library="ak",
-        step=CHUNK_SIZE
+        step=iteration_chuck_size
     )
-    
-    # Use ProcessPoolExecutor to process each chunk in parallel.
+
+    all_event_inputs = []
+    all_event_targets = []
+
+    # Process each chunk in parallel using  ProcessPoolExecutor
     with ProcessPoolExecutor() as executor:
-        futures = []
-        for chunk in chunk_iterator:
-  
-            futures.append(executor.submit(process_chunk, chunk))
-        
-        # Retrieve results as they complete.
-        # and unpacks results: event_inputs, event_targets
+        futures = [executor.submit(process_chunk, chunk) for chunk in chunk_iterator]
         for future in as_completed(futures):
             try:
                 result = future.result()
-                event_inputs, event_targets, _, _, _, _, _ = result
-                event_inputs_all.extend(event_inputs)
-                event_targets_all.extend(event_targets)
-            except Exception as exc:
-                print("Chunk processing generated an exception:", exc)
-    
-    if not event_inputs_all:
+                event_inputs, event_targets, *_ = result
+                all_event_inputs.extend(event_inputs)
+                all_event_targets.extend(event_targets)
+            except Exception as error:
+                print("Error during chunk processing:", error)
+
+    if not all_event_inputs:
         raise ValueError("No events passed the Z selection criteria in any chunk.")
 
-    # Save all events that pass event event selction to CSV before training model. 
-    #maybe get rid of this we will see...  
     csv_filename = "filtered_Z_events.csv"
-    save_events_to_csv(event_inputs_all, event_targets_all, filename=csv_filename)
-    df = pd.read_csv(os.path.join(OUTPUT_DIR, csv_filename))
+    save_events_to_csv(all_event_inputs, all_event_targets, filename=csv_filename)
+    df = pd.read_csv(os.path.join(output_diretory, csv_filename))
     X = df.drop(columns=["target"]).values
     y = df["target"].values
-  
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-    
-    model = build_model(input_dim=MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE)
-    history = model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=2, validation_split=0.2)
+    model = build_model(input_dim=max_number_Non_Muons * particle_features)
+
+    history = model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=2, validation_split=0.2) 
     mse = model.evaluate(X_test, y_test, verbose=0)
     print("Mean Squared Error on Test Set:", mse)
     
     y_pred = model.predict(X_test)
     evaluate_correlation(y_test, y_pred)
+    
     plot_predictions(y_test, y_pred)
     plot_training_loss(history)
 
