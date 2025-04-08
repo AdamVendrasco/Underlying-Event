@@ -9,15 +9,14 @@ import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from ROOT import TLorentzVector
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 #########################################
 # Configuration
 #########################################
 FILE_INDEX_PATH = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-#check 
 OUTPUT_DIR = "/app/Underlying-Event/Underlying-Event/"
 
-# Data and tree configuration of branches I'm interested in
 TREE_NAME = "Events"
 BRANCHES = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
@@ -27,72 +26,24 @@ BRANCHES = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fM",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.vertex_.fCoordinates.fZ"
 ]
-ENTRY_STOP = None
 
-# Event selection parameters
-MIN_MUON_PT = 20.0           # Minimum muon pT in GeV
-Z_MASS_WINDOW = (85.0, 95.0)   # Z candidate mass window in GeV
-DZ_THRESHOLD = 0.1           # Max allowed dz difference between muons
-MAX_NUM_NONMUONS = 200       # Maximum non-muon candidates per event
-FEATURES_PER_PARTICLE = 4    # [pt, eta, phi, mass]
-MAX_FILES_TO_READ = 1     # Limit the number of files processed
+# Use step to define the chunk size when iterating (number of events per chunk)
+CHUNK_SIZE = 1000
 
-#########################################
-# File Loading Functions
-#########################################
-def load_file_paths(file_path):
-    """
-    Load file paths from a text file with one per line.
-    """
-    with open(file_path, "r") as f:
-        return [line.strip() for line in f if line.strip()]
-
-def get_data_files():
-    """
-    Retrieve and limit the list of data file paths.
-    """
-    all_paths = load_file_paths(FILE_INDEX_PATH)
-    return all_paths[:MAX_FILES_TO_READ]
+MIN_MUON_PT = 20.0
+Z_MASS_WINDOW = (85.0, 95.0)
+DZ_THRESHOLD = 0.1
+MAX_NUM_NONMUONS = 200
+FEATURES_PER_PARTICLE = 4
 
 #########################################
-# Data Loading and Debugging
-#########################################
-def list_available_branches(file_path, tree_name):
-    """
-    Print all available branches in a given ROOT file.
-    """
-    try:
-        print("Opening file:", file_path)
-        with uproot.open(file_path, timeout=18000) as file:
-            tree = file[tree_name]
-            print("Available branches:")
-            for branch in tree.keys():
-                print("  ", branch)
-    except Exception as e:
-        print("Error opening file:", e)
-
-def load_data(file_paths, tree_name, branches, entry_stop=None):
-    """
-    Load and concatenate data from multiple ROOT files.
-    """
-    files_dict = {fp: tree_name for fp in file_paths}
-    data = uproot.concatenate(files_dict, expressions=branches, library="ak")
-    if entry_stop is not None:
-        data = ak.Array({branch: data[branch][:entry_stop] for branch in branches})
-    return data
-
-#########################################
-# Data Processing Function
+# Event Processing Function
 #########################################
 def process_events(data):
     """
-     Prcess events to select Z candidates and extract features of non-muon canidates.
-     The selection cuts for the events are as follows:
-     - Select events with exactly two muons.
-     - Muon pair charges must be opposite.
-     - Muon pT > 20 GeV.
-     - Muon pair invariant mass within 85-95 GeV 
-     - Muon pair dz difference < 0.1 cm
+    Process events to select Z candidates and extract features from non-muon candidates.
+    Returns a tuple:
+       (event_inputs, event_targets, invariant_masses, z_pt_list, z_pz_list, z_phi_list, z_eta_list)
     """
     event_inputs, event_targets = [], []
     invariant_masses = []  
@@ -104,15 +55,17 @@ def process_events(data):
     phi_array   = data[BRANCHES[3]]
     mass_array  = data[BRANCHES[4]]
     vertex_array = data[BRANCHES[5]]
-
+    
     total_events = len(pdgId_array)
     total_selected_events = 0
-    print("Total events in file:", total_events)
-
+    # For debugging large runs, you can print the number of events in this chunk:
+    # print(f"Processing {total_events} events in chunk...")
+    
     for event in zip(pdgId_array, pt_array, eta_array, phi_array, mass_array, vertex_array):
         event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex = event
         muon_vectors, muon_charges, muon_vertex_z = [], [], []
 
+        # Process each candidate in an event looking for muons
         for pdgId, pt_val, eta_val, phi_val, mass_val, vertex_z in zip(
             event_pdgIds, event_pt, event_eta, event_phi, event_mass, event_vertex
         ):
@@ -123,6 +76,7 @@ def process_events(data):
                 muon_charges.append(np.sign(pdgId))
                 muon_vertex_z.append(vertex_z)
 
+        # Check for exactly two muons with opposite charge and small dz difference
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
         if abs(muon_vertex_z[0] - muon_vertex_z[1]) > DZ_THRESHOLD:
@@ -153,39 +107,40 @@ def process_events(data):
         event_vector = []
         for i in range(min(num_nonmuons, MAX_NUM_NONMUONS)): 
             start = i * FEATURES_PER_PARTICLE
-            event_vector.extend(nonmuon_features[start:start + FEATURES_PER_PARTICLE]) #Keras expects fixed-length flat vectors
+            event_vector.extend(nonmuon_features[start:start + FEATURES_PER_PARTICLE])
         event_vector.extend([0.0] * (MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE - len(event_vector)))
 
         event_inputs.append(event_vector)
         event_targets.append(muon_pz_sum)
         total_selected_events += 1
 
-    print("Selected events:", total_selected_events)
+    # Print how many events passed the selection in this chunk:
+    print("Selected events in this chunk:", total_selected_events)
     return event_inputs, event_targets, invariant_masses, z_pt_list, z_pz_list, z_phi_list, z_eta_list
 
-def save_events_to_csv(event_inputs, event_targets, filename="filtered_events.csv"):
+#########################################
+# Parallel Processing: Processing Chunks
+#########################################
+def process_chunk(chunk_data):
     """
-    Save filtered events to a CSV file.
-    
-    Parameters:
-      event_inputs: List of lists containing event features.
-      event_targets: List containing event target values.
-      filename: Name of the CSV file to save.
+    A wrapper to process a data chunk. This function is designed to be executed in a separate process.
     """
-    num_features = MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE
-    
-    columns = [f"feature_{i}" for i in range(num_features)]
-    
-    df = pd.DataFrame(event_inputs, columns=columns)
-    
-    df["target"] = event_targets
-    df.to_csv(filename, index=False)
-    print("Saved filtered events to:", filename)
-
-
+    return process_events(chunk_data)
 
 #########################################
-# Model Building and Evaluation
+# Save Events to CSV
+#########################################
+def save_events_to_csv(event_inputs, event_targets, filename="filtered_events.csv"):
+    num_features = MAX_NUM_NONMUONS * FEATURES_PER_PARTICLE
+    columns = [f"feature_{i}" for i in range(num_features)]
+    df = pd.DataFrame(event_inputs, columns=columns)
+    df["target"] = event_targets
+    csv_path = os.path.join(OUTPUT_DIR, filename)
+    df.to_csv(csv_path, index=False)
+    print("Saved filtered events to:", csv_path)
+
+#########################################
+# Model Building and Evaluation Functions
 #########################################
 def build_model(input_dim):
     tf.keras.utils.set_random_seed(42)
@@ -202,9 +157,6 @@ def evaluate_correlation(y_true, y_pred):
     print("Pearson Correlation Coefficient:", correlation)
     return correlation
 
-#########################################
-# Visualization Functions
-#########################################
 def save_plot(plt_obj, filename):
     filepath = os.path.join(OUTPUT_DIR, filename)
     plt_obj.savefig(filepath)
@@ -231,22 +183,52 @@ def plot_training_loss(history):
     save_plot(plt, "loss_plot.png")
 
 #########################################
-# Main Execution
+# Main Execution with uproot Iterator and Parallel Chunk Processing
 #########################################
 def main():
-    data_files = get_data_files()
-    list_available_branches(data_files[0], TREE_NAME)
+    # Get the ROOT file paths from the file index
+    with open(FILE_INDEX_PATH, "r") as f:
+        files = [line.strip() for line in f if line.strip()]
+    file_path = files[0]
+    event_inputs_all = []
+    event_targets_all = []
     
-    data = load_data(data_files, TREE_NAME, BRANCHES, entry_stop=ENTRY_STOP)
-    results = process_events(data)
-    event_inputs, event_targets, _, _, _, _, _ = results
-    if not event_inputs:
-        raise ValueError("No events passed the Z selection criteria.")
+    # Using uproot.iterate to load the ROOT file in chunks.
+    #Setting step=CHUNK_SIZE determines how many events per chunk.
+    chunk_iterator = uproot.iterate(
+        file_path,
+        TREE_NAME,
+        expressions=BRANCHES,
+        library="ak",
+        step=CHUNK_SIZE
+    )
+    
+    # Use ProcessPoolExecutor to process each chunk in parallel.
+    with ProcessPoolExecutor() as executor:
+        futures = []
+        for chunk in chunk_iterator:
+  
+            futures.append(executor.submit(process_chunk, chunk))
+        
+        # Retrieve results as they complete.
+        # and unpacks results: event_inputs, event_targets
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                event_inputs, event_targets, _, _, _, _, _ = result
+                event_inputs_all.extend(event_inputs)
+                event_targets_all.extend(event_targets)
+            except Exception as exc:
+                print("Chunk processing generated an exception:", exc)
+    
+    if not event_inputs_all:
+        raise ValueError("No events passed the Z selection criteria in any chunk.")
 
+    # Save all events that pass event event selction to CSV before training model. 
+    #maybe get rid of this we will see...  
     csv_filename = "filtered_Z_events.csv"
-    save_events_to_csv(event_inputs, event_targets, csv_filename)
-
-    df = pd.read_csv(csv_filename)
+    save_events_to_csv(event_inputs_all, event_targets_all, filename=csv_filename)
+    df = pd.read_csv(os.path.join(OUTPUT_DIR, csv_filename))
     X = df.drop(columns=["target"]).values
     y = df["target"].values
   
