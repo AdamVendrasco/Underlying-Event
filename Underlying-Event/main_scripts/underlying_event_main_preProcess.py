@@ -7,8 +7,8 @@ import pandas as pd
 from ROOT import TLorentzVector
 
 # Configuration parameters
-file_index_path = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-output_directory = "/app/Underlying-Event/Underlying-Event/"
+file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+output_directory = "/app/Underlying-Event/"
 tree_name = "Events"
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
@@ -19,7 +19,7 @@ branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.vertex_.fCoordinates.fZ"
 ]
 
-iteration_chunk_size = 1000  # Number of events per chunk
+iteration_chunk_size = 10000  # Number of events per chunk
 min_muon_pT = 20.0           # Minimum transverse momentum for a muon
 z_mass_range = (85.0, 95.0)    # Z candidate mass window (GeV)
 dz_threshold = 0.1           # Maximum allowed difference in muon vertex z positions
@@ -47,7 +47,7 @@ def process_events(data):
         - z_eta_list: List of Z candidate pseudorapidities.
     """
     event_inputs, event_targets = [], []
-    invariant_masses = []  
+    invariant_masses = []
     z_pt_list, z_pz_list, z_phi_list, z_eta_list = [], [], [], []
 
     particle_ids = data[branches[0]]
@@ -56,17 +56,19 @@ def process_events(data):
     phis       = data[branches[3]]
     masses     = data[branches[4]]
     vertices_z = data[branches[5]]
-    
+
+    total_events = len(particle_ids)
     selected_events = 0  # Counter for events passing selection cuts
 
     # Loop over each event in the chunk of data
     for evt_ids, evt_pts, evt_etas, evt_phis, evt_masses, evt_vertices in zip(
         particle_ids, pts, etas, phis, masses, vertices_z):
+
+        # Process the event: extract muon candidates etc.
         muon_vectors = []
         muon_charges = []
         muon_vertex_z = []
 
-        # Loop over each candidate in the event
         for pdgid, pt, eta, phi, mass, vertex in zip(evt_ids, evt_pts, evt_etas, evt_phis, evt_masses, evt_vertices):
             if abs(pdgid) == 13 and pt > min_muon_pT:
                 tlv = TLorentzVector()
@@ -75,7 +77,7 @@ def process_events(data):
                 muon_charges.append(np.sign(pdgid))
                 muon_vertex_z.append(vertex)
 
-        # Require exactly two muons with opposite charges and similar vertex z positions
+        # Apply selection criteria
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
         if abs(muon_vertex_z[0] - muon_vertex_z[1]) > dz_threshold:
@@ -87,13 +89,13 @@ def process_events(data):
         if not (z_mass_range[0] <= z_mass <= z_mass_range[1]):
             continue
 
+        # If passed all selections, record event details
         invariant_masses.append(z_mass)
         z_pt_list.append(z_candidate.Pt())
         z_pz_list.append(z_candidate.Pz())
         z_phi_list.append(z_candidate.Phi())
         z_eta_list.append(z_candidate.Eta())
 
-        # Compute sum of Pz from the muon pair (our target)
         muon_pz_sum = muon_vectors[0].Pz() + muon_vectors[1].Pz()
 
         nonmuon_features = []
@@ -102,10 +104,9 @@ def process_events(data):
                 continue
             nonmuon_features.extend([pt, eta, phi, mass])
 
-        # Limit number of non-muon particles and pad if needed
         num_particles = len(nonmuon_features) // particle_features
         event_features = []
-        for i in range(min(num_particles, max_number_Non_Muons)): 
+        for i in range(min(num_particles, max_number_Non_Muons)):
             start = i * particle_features
             event_features.extend(nonmuon_features[start:start + particle_features])
         required_length = max_number_Non_Muons * particle_features
@@ -115,8 +116,10 @@ def process_events(data):
         event_targets.append(muon_pz_sum)
         selected_events += 1
 
-    print("Selected events in this chunk:", selected_events)
-    return (event_inputs, event_targets, invariant_masses, 
+    # Print out summary info for the chunk:
+    print(f"Processed {total_events} events in this chunk.")
+    print(f"Selected events in this chunk: {selected_events}")
+    return (event_inputs, event_targets, invariant_masses,
             z_pt_list, z_pz_list, z_phi_list, z_eta_list)
 
 
@@ -145,13 +148,13 @@ def main():
     # Load list of ROOT files from the file index
     with open(file_index_path) as f:
         root_files = [line.strip() for line in f if line.strip()]
-    
+
     # Limit the number of files if requested
     if num_input_files > 0:
         root_files = root_files[:num_input_files]
 
     file_map = {file: tree_name for file in root_files}
-    
+
     chunk_iterator = uproot.iterate(
         files=file_map,
         expressions=branches,

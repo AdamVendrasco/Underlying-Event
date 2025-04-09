@@ -7,7 +7,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 
 # Configuration parameters (should match those used in processing)
-output_directory = "/app/Underlying-Event/Underlying-Event/"
+output_directory = "/app/Underlying-Event/"
 csv_filename = "filtered_Z_events.csv"
 max_number_Non_Muons = 200
 particle_features = 4   # Number of features per particle
@@ -106,3 +106,4 @@ def main():
 if __name__ == '__main__':
     main()
 
+~                                                                        
