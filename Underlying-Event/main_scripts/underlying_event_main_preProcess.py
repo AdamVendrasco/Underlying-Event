@@ -3,14 +3,12 @@ import os
 import uproot
 import awkward as ak
 import numpy as np
-import matplotlib.pyplot as plt
-import tensorflow as tf
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from ROOT import TLorentzVector
 
+# Configuration parameters
 file_index_path = "/app/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-output_direcotry = "/app/Underlying-Event/Underlying-Event/"
+output_directory = "/app/Underlying-Event/Underlying-Event/"
 tree_name = "Events"
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
@@ -21,12 +19,16 @@ branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.vertex_.fCoordinates.fZ"
 ]
 
-iteration_chuck_size = 1000  # Number of events per chunk
+iteration_chunk_size = 1000  # Number of events per chunk
 min_muon_pT = 20.0           # Minimum transverse momentum for a muon
 z_mass_range = (85.0, 95.0)    # Z candidate mass window (GeV)
 dz_threshold = 0.1           # Maximum allowed difference in muon vertex z positions
 max_number_Non_Muons = 200   # Maximum number of non-muon particles per event
 particle_features = 4        # Number of features per particle (pt, eta, phi, mass)
+
+# Limit the number of input files (set to a positive integer)
+num_input_files = 1  # For example, process only the first 5 files from the index
+
 
 #########################################
 # Event Processing Function
@@ -55,7 +57,6 @@ def process_events(data):
     masses     = data[branches[4]]
     vertices_z = data[branches[5]]
     
-    total_events = len(particle_ids)
     selected_events = 0  # Counter for events passing selection cuts
 
     # Loop over each event in the chunk of data
@@ -74,6 +75,7 @@ def process_events(data):
                 muon_charges.append(np.sign(pdgid))
                 muon_vertex_z.append(vertex)
 
+        # Require exactly two muons with opposite charges and similar vertex z positions
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
         if abs(muon_vertex_z[0] - muon_vertex_z[1]) > dz_threshold:
@@ -117,97 +119,36 @@ def process_events(data):
     return (event_inputs, event_targets, invariant_masses, 
             z_pt_list, z_pz_list, z_phi_list, z_eta_list)
 
+
 def process_chunk(chunk_data):
     """
-    Wrapper to process a chunk of data. This is a simple wrapper function
-    for sequential processing.
+    Simple wrapper function for sequential processing of a data chunk.
     """
     return process_events(chunk_data)
 
 
-#########################################
-# Save Processed Events to CSV
-#########################################
-def save_events_to_csv(inputs, targets, filename="filtered_events.csv"):
+def save_events_to_csv(inputs, targets, filename="filtered_Z_events.csv"):
     """
-    Saving to CSV so that only the particles of interest are pushed to the DNN.
+    Save the filtered events to a CSV file.
     """
     num_features = max_number_Non_Muons * particle_features
     # Create column names for features
     columns = [f"feature_{i}" for i in range(num_features)]
     df = pd.DataFrame(inputs, columns=columns)
     df["target"] = targets
-    csv_path = os.path.join(output_direcotry, filename)
+    csv_path = os.path.join(output_directory, filename)
     df.to_csv(csv_path, index=False)
     print("Saved filtered events to:", csv_path)
 
-#########################################
-# Model Build and Evaluation functions
-#########################################
-def build_model(input_dim):
-    """
-    Builds and compiles a simple regression model using TensorFlow.
-    """
-    tf.keras.utils.set_random_seed(42)
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(shape=(input_dim,)),
-        tf.keras.layers.Dense(1000),
-        tf.keras.layers.Dense(100),
-        tf.keras.layers.Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
 
-def evaluate_correlation(y_true, y_pred):
-    """
-    Calculates and prints the Pearson correlation coefficient between true and predicted values.
-    """
-    y_pred = np.array(y_pred).flatten()
-    correlation = np.corrcoef(y_true, y_pred)[0, 1]
-    print("Pearson Correlation Coefficient:", correlation)
-    return correlation
-
-def save_plot(plot_obj, filename):
-    """
-    Saves the current plot to a file.
-    """
-    filepath = os.path.join(output_direcotry, filename)
-    plot_obj.savefig(filepath)
-    print("Plot saved to:", filepath)
-    plot_obj.close()
-
-def plot_predictions(true_labels, predicted_labels):
-    """
-    Creates and saves a scatter plot comparing true labels and predicted labels.
-    """
-    plt.figure()
-    plt.scatter(true_labels, predicted_labels)
-    plt.xlabel('True Labels (Sum of Muon Pz)')
-    plt.ylabel('Predicted Labels')
-    plt.title('True vs. Predicted Labels')
-    save_plot(plt, "prediction_main.png")
-
-def plot_training_loss(history):
-    """
-    Plots training and validation loss over epochs.
-    """
-    plt.figure()
-    plt.plot(history.history['loss'], label='Training Loss')
-    if 'val_loss' in history.history:
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training vs. Validation Loss')
-    plt.legend()
-    save_plot(plt, "loss_plot.png")
-
-#########################################
-# Main Execution: Load, Process, and Train
-#########################################
 def main():
-    num_input_files = 1  # Adjust this to select more ROOT files
+    # Load list of ROOT files from the file index
     with open(file_index_path) as f:
         root_files = [line.strip() for line in f if line.strip()]
+    
+    # Limit the number of files if requested
+    if num_input_files > 0:
+        root_files = root_files[:num_input_files]
 
     file_map = {file: tree_name for file in root_files}
     
@@ -215,7 +156,7 @@ def main():
         files=file_map,
         expressions=branches,
         library="ak",
-        step=iteration_chuck_size
+        step=iteration_chunk_size
     )
 
     all_event_inputs = []
@@ -233,23 +174,7 @@ def main():
     if not all_event_inputs:
         raise ValueError("No events passed the Z selection criteria in any chunk.")
 
-    csv_filename = "filtered_Z_events.csv"
-    save_events_to_csv(all_event_inputs, all_event_targets, filename=csv_filename)
-    df = pd.read_csv(os.path.join(output_direcotry, csv_filename))
-    X = df.drop(columns=["target"]).values
-    y = df["target"].values
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
-    model = build_model(input_dim=max_number_Non_Muons * particle_features)
-
-    history = model.fit(X_train, y_train, epochs=100, batch_size=10, verbose=2, validation_split=0.2) 
-    mse = model.evaluate(X_test, y_test, verbose=0)
-    print("Mean Squared Error on Test Set:", mse)
-    
-    y_pred = model.predict(X_test)
-    evaluate_correlation(y_test, y_pred)
-    
-    plot_predictions(y_test, y_pred)
-    plot_training_loss(history)
+    save_events_to_csv(all_event_inputs, all_event_targets)
 
 if __name__ == '__main__':
     main()
