@@ -7,10 +7,10 @@ import pandas as pd
 from ROOT import TLorentzVector
 
 # Configuration parameters
-#file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-#output_directory = "/app/Underlying-Event/"
-file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
+file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+output_directory = "/app/Underlying-Event/"
+#file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+#output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
 tree_name = "Events"
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
@@ -29,7 +29,7 @@ max_number_Non_Muons = 200   # Maximum number of non-muon particles per event
 particle_features = 4        # Number of features per particle (pt, eta, phi, mass)
 
 # Limit the number of input files (set to a positive integer)
-num_input_files = 1  # For example, process only the first 5 files from the index
+num_input_files = 30  # For example, process only the first 5 files from the index
 
 
 #########################################
