@@ -10,7 +10,7 @@ from ROOT import TLorentzVector
 file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
 output_directory = "/app/Underlying-Event/"
 #file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-#output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
+#output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/" #test
 tree_name = "Events"
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
