@@ -28,8 +28,7 @@ dz_threshold = 0.1           # Maximum allowed difference in muon vertex z posit
 max_number_Non_Muons = 200   # Maximum number of non-muon particles per event
 particle_features = 4        # Number of features per particle (pt, eta, phi, mass)
 
-# Limit the number of input files (set to a positive integer)
-num_input_files = 30  # For example, process only the first 5 files from the index
+num_input_files = 30  # Number of files to use from index.txt
 
 
 #########################################
