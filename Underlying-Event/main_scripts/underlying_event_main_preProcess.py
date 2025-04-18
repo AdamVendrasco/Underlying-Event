@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 import os
+import sys
 import uproot
 import awkward as ak
 import numpy as np
 import pandas as pd
 from ROOT import TLorentzVector
 
+sys.path.insert(0, "/afs/cern.ch/user/a/avendras/.local/lib/python3.9/site-packages")
+print("NOW")
 # Configuration parameters
-file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-output_directory = "/app/Underlying-Event/"
-#file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-#output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/" #test
+#file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+#output_directory = "/app/Underlying-Event/"
+file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/" #test
 tree_name = "Events"
+print("Now 2")
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fPt",
@@ -27,8 +31,7 @@ z_mass_range = (85.0, 95.0)    # Z candidate mass window (GeV)
 dz_threshold = 0.1           # Maximum allowed difference in muon vertex z positions
 max_number_Non_Muons = 200   # Maximum number of non-muon particles per event
 particle_features = 4        # Number of features per particle (pt, eta, phi, mass)
-
-num_input_files = 30  # Number of files to use from index.txt
+num_input_files = 80  # Number of files to use from index.txt
 
 
 #########################################
@@ -161,7 +164,8 @@ def main():
         expressions=branches,
         library="ak",
         step=iteration_chunk_size
-    )
+)
+
 
     all_event_inputs = []
     all_event_targets = []

@@ -1,0 +1,10 @@
+universe                = vanilla
+executable              = /afs/cern.ch/user/a/avendras/work/Underlying-Event/postProcess.sh
+should_transfer_files   = YES
+WhenToTransferOutput    = ON_EXIT_OR_EVICT
+output                  = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/out_postProcess_$(ClusterId).$(ProcId)
+error                   = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/err_postProcess_$(ClusterId).$(ProcId)
+log                     = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/log_postProcess_$(ClusterId).$(ProcId)
+RequestCpus             = 4
++JobFlavour             = "longlunch"
+queue 1

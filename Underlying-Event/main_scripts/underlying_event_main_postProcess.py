@@ -4,11 +4,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import argparse
 from sklearn.model_selection import train_test_split
 
 # Configuration parameters (should match those used in pre processing)
-output_directory = "/app/Underlying-Event/"
-csv_filename = "/app/Underlying-Event/filtered_Z_events.csv"
+
+# output_directory = "/app/Underlying-Event/"
+output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
+csv_filename = "filtered_Z_events_30.csv"
 max_number_Non_Muons = 200
 particle_features = 4   # Number of features per particle
 
@@ -21,13 +24,14 @@ def build_model(input_dim):
     """
     tf.keras.utils.set_random_seed(42)
     model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(shape=(input_dim,)),
-        tf.keras.layers.Dense(1000, activation='relu'),
-        tf.keras.layers.Dense(100, activation='relu'),
+        tf.keras.layers.InputLayer(input_shape=(input_dim,)), 
+        tf.keras.layers.Dense(10, activation='relu'),
+        tf.keras.layers.Dense(10, activation='relu'),
         tf.keras.layers.Dense(1)
     ])
     model.compile(optimizer='adam', loss='mean_squared_error')
     return model
+
 
 def evaluate_correlation(y_true, y_pred):
     """
@@ -73,36 +77,45 @@ def plot_training_loss(history):
     save_plot(plt, "loss_plot.png")
 
 
+
 def main():
-    # Load CSV with filtered events
-    csv_path = os.path.join(output_directory, csv_filename)
+    """
+     - Loads CSV (given some path parser to the CSV) with filtered events that will be given to DNN.
+     - Tracks and displays the total number of events given to the DNN.
+     - Trains/evaluates the model.
+
+    """
+    parser = argparse.ArgumentParser(description="Train DNN on particle data.")
+    parser.add_argument('--csv_path', type=str, required=False,
+                        default=os.path.join(output_directory, csv_filename),
+                        help='Enter full path to the input CSV file here!')
+
+    args = parser.parse_args()
+    csv_path = args.csv_path
+
     df = pd.read_csv(csv_path)
+    total_events = df.shape[0]
+    print("CSV loaded from:", csv_path)
+    print("Total events loaded:", total_events)
+    
     X = df.drop(columns=["target"]).values
     y = df["target"].values
 
-    # Split into training and testing datasets
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.1, random_state=42)
 
     input_dim = max_number_Non_Muons * particle_features
     model = build_model(input_dim=input_dim)
 
-    # Train the model
     history = model.fit(X_train, y_train, epochs=100, batch_size=10,
                         verbose=2, validation_split=0.2)
 
-    # Evaluate the model
     mse = model.evaluate(X_test, y_test, verbose=0)
     print("Mean Squared Error on Test Set:", mse)
-
-    # Predict and evaluate correlation
     y_pred = model.predict(X_test)
     evaluate_correlation(y_test, y_pred)
-
-    # Plot predictions and training history
     plot_predictions(y_test, y_pred)
     plot_training_loss(history)
 
 if __name__ == '__main__':
     main()
-                                                                 

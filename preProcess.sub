@@ -1,0 +1,12 @@
+universe                = vanilla
+executable              = /afs/cern.ch/user/a/avendras/work/Underlying-Event/preProcess.sh
+should_transfer_files   = YES
+WhenToTransferOutput    = ON_EXIT_OR_EVICT
+transfer_output_files   = filtered_Z_events.csv
+output                  = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/out_new.PreProcess_$(ClusterId).$(ProcId)
+error                   = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/err_new.PreProcess_$(ClusterId).$(ProcId)
+log                     = /afs/cern.ch/user/a/avendras/work/Underlying-Event/output/log_new.PreProcess_$(ClusterId).$(ProcId)
+request_memory          = 10000M
+RequestCpus             = 8
++JobFlavour             = "testmatch"
+queue 1
