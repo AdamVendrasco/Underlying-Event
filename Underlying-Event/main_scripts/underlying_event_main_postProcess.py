@@ -34,7 +34,7 @@ def build_model(input_dim):
     model.add(tf.keras.layers.Dense(10, kernel_regularizer=regularizers.l2(1e-5)))
     model.add(tf.keras.layers.BatchNormalization())
     model.add(tf.keras.layers.ReLU())
-    model.add(tf.keras.layers.Dropout(0.2ss))
+    model.add(tf.keras.layers.Dropout(0.2))
 
     model.add(tf.keras.layers.Dense(1))  # output layer (linear-regression)
 
