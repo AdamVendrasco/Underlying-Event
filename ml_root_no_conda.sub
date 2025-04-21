@@ -2,10 +2,11 @@ universe                = docker
 docker_image            = docker.io/adamvendrasco15/root_ml:xrootd_no_conda
 executable              = /app/entry.sh
 should_transfer_files   = YES
-output                  = out.PreProcess_$(ClusterId).$(ProcId)
-error                   = err.PreProcess_$(ClusterId).$(ProcId)
-log                     = log.PreProcess_$(ClusterId).$(ProcId)
+transfer_output_files   = /app/Underlying-Event/filtered_Z_events.csv
+output                  = output/out.PreProcess_$(ClusterId).$(ProcId)
+error                   = error/err.PreProcess_$(ClusterId).$(ProcId)
+log                     = log/log.PreProcess_$(ClusterId).$(ProcId)
 request_memory          = 20000M
-RequestCpus             = 4
+RequestCpus             = 8
 +JobFlavour             = "tomorrow"
 queue 1

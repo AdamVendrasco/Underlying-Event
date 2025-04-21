@@ -1,0 +1,59 @@
+Unable to find image 'adamvendrasco15/root_ml:xrootd_no_conda' locally
+xrootd_no_conda: Pulling from adamvendrasco15/root_ml
+3c645031de29: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+6fa9b75d5659: Pulling fs layer
+93174a0eaa07: Pulling fs layer
+cec2e533f25f: Pulling fs layer
+93174a0eaa07: Waiting
+cec2e533f25f: Waiting
+bf79c593e05f: Pulling fs layer
+f65f9bf71a37: Pulling fs layer
+de63be82fdfe: Pulling fs layer
+31fd8a428005: Pulling fs layer
+de63be82fdfe: Waiting
+f65f9bf71a37: Waiting
+31fd8a428005: Waiting
+165a6a9ae8b1: Pulling fs layer
+9baebdabcc05: Pulling fs layer
+165a6a9ae8b1: Waiting
+f6a67fe33af9: Pulling fs layer
+9e781b2ac5ac: Pulling fs layer
+9baebdabcc05: Waiting
+f6a67fe33af9: Waiting
+4f4fb700ef54: Verifying Checksum
+4f4fb700ef54: Download complete
+6fa9b75d5659: Verifying Checksum
+6fa9b75d5659: Download complete
+3c645031de29: Verifying Checksum
+bf79c593e05f: Verifying Checksum
+bf79c593e05f: Download complete
+f65f9bf71a37: Download complete
+3c645031de29: Pull complete
+4f4fb700ef54: Pull complete
+6fa9b75d5659: Pull complete
+cec2e533f25f: Verifying Checksum
+cec2e533f25f: Download complete
+31fd8a428005: Verifying Checksum
+31fd8a428005: Download complete
+165a6a9ae8b1: Verifying Checksum
+165a6a9ae8b1: Download complete
+9baebdabcc05: Download complete
+9e781b2ac5ac: Verifying Checksum
+9e781b2ac5ac: Download complete
+93174a0eaa07: Verifying Checksum
+93174a0eaa07: Download complete
+de63be82fdfe: Verifying Checksum
+de63be82fdfe: Download complete
+93174a0eaa07: Pull complete
+cec2e533f25f: Pull complete
+bf79c593e05f: Pull complete
+f65f9bf71a37: Pull complete
+de63be82fdfe: Pull complete
+31fd8a428005: Pull complete
+165a6a9ae8b1: Pull complete
+9baebdabcc05: Pull complete
+f6a67fe33af9: Pull complete
+9e781b2ac5ac: Pull complete
+Digest: sha256:fd91d07a7329ace21b5f68fe9f70d1a1f2b560eb9b3c2638250c865e980ff1d1
+Status: Downloaded newer image for adamvendrasco15/root_ml:xrootd_no_conda

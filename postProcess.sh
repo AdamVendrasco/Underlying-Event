@@ -11,7 +11,7 @@ eval `scramv1 runtime -sh`
 export PYTHONNOUSERSITE=1
 cd /afs/cern.ch/user/a/avendras/work/Underlying-Event
 echo "starting postProcess python file"
-python3 /afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/main_scripts/underlying_event_main_postProcess.py --csv_path /eos/user/a/avendras/Underlying-Event/Underlying-Event/filtered_Z_events_30.csv| tee postProcess30.txt
+python3 /afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/main_scripts/underlying_event_main_postProcess.py --csv_path /eos/user/a/avendras/Underlying-Event/Underlying-Event/filtered_Z_events_80.csv | tee postProcess80_TESTING.txt
 
 
 

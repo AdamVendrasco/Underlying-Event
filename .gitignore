@@ -3,3 +3,4 @@
 *.pdf
 .globus
 root_files/
+*.csv

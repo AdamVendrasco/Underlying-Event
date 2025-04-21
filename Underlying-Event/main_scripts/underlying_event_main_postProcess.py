@@ -5,117 +5,144 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import argparse
+
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras import regularizers
 
-# Configuration parameters (should match those used in pre processing)
+output_dir = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/plots/"
+csv_file = "filtered_Z_events_80.csv"
 
-# output_directory = "/app/Underlying-Event/"
-output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
-csv_filename = "filtered_Z_events_30.csv"
-max_number_Non_Muons = 200
-particle_features = 4   # Number of features per particle
-
-#########################################
-# Model Build and Evaluation functions
-#########################################
 def build_model(input_dim):
-    """
-    Builds and compiles a simple regression model using TensorFlow.
-    """
+    # Basic DNN model with some regularization + dropout to prevent overfitting
     tf.keras.utils.set_random_seed(42)
-    model = tf.keras.Sequential([
-        tf.keras.layers.InputLayer(input_shape=(input_dim,)), 
-        tf.keras.layers.Dense(10, activation='relu'),
-        tf.keras.layers.Dense(10, activation='relu'),
-        tf.keras.layers.Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mean_squared_error')
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=(input_dim,)))
+    model.add(tf.keras.layers.Dense(200, kernel_regularizer=regularizers.l2(1e-4)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.ReLU())
+    model.add(tf.keras.layers.Dropout(0.2))
+
+    model.add(tf.keras.layers.Dense(200))
+   
+
+    model.add(tf.keras.layers.Dense(70, kernel_regularizer=regularizers.l2(1e-5)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.ReLU())
+    model.add(tf.keras.layers.Dropout(0.1))
+
+    model.add(tf.keras.layers.Dense(10, kernel_regularizer=regularizers.l2(1e-5)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.ReLU())
+    model.add(tf.keras.layers.Dropout(0.2ss))
+
+    model.add(tf.keras.layers.Dense(1))  # output layer (linear-regression)
+
+    # Use a moderate learning rate to ensure stable convergence
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+                  loss='mean_squared_error')
     return model
 
 
-def evaluate_correlation(y_true, y_pred):
-    """
-    Calculates and prints the Pearson correlation coefficient between true and predicted values.
-    """
-    y_pred = np.array(y_pred).flatten()
-    correlation = np.corrcoef(y_true, y_pred)[0, 1]
-    print("Pearson Correlation Coefficient:", correlation)
-    return correlation
-
-def save_plot(plot_obj, filename):
-    """
-    Saves the current plot to a file.
-    """
-    filepath = os.path.join(output_directory, filename)
-    plot_obj.savefig(filepath)
-    print("Plot saved to:", filepath)
-    plot_obj.close()
-
-def plot_predictions(true_labels, predicted_labels):
-    """
-    Creates and saves a scatter plot comparing true labels and predicted labels.
-    """
+def plot_predictions(y_true, y_pred):
     plt.figure()
-    plt.scatter(true_labels, predicted_labels)
-    plt.xlabel('True Labels (Sum of Muon Pz)')
-    plt.ylabel('Predicted Labels')
-    plt.title('True vs. Predicted Labels')
-    save_plot(plt, "prediction_main.png")
+    plt.scatter(y_true, y_pred, s=2, alpha=0.7)
+    plt.xlabel("Actual (Sum of Muon Pz)")
+    plt.ylabel("Predicted")
+    plt.title("Predicted vs Actual")
+    plt.tight_layout()
+    path = os.path.join(output_dir, "prediction_main_new.png")
+    plt.savefig(path)
+    print(f"Saved scatter plot to {path}")
+    plt.close()
 
-def plot_training_loss(history):
-    """
-    Plots training and validation loss over epochs.
-    """
+
+def plot_loss_curve(history):
     plt.figure()
-    plt.plot(history.history['loss'], label='Training Loss')
+    plt.plot(history.history['loss'], label='Training loss')
     if 'val_loss' in history.history:
-        plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training vs. Validation Loss')
+        plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss Over Time")
     plt.legend()
-    save_plot(plt, "loss_plot.png")
+    plt.tight_layout()
+    path = os.path.join(output_dir, "loss_plot_new.png")
+    plt.savefig(path)
+    print(f"Saved loss curve to {path}")
+    plt.close()
 
+
+def evaluate_corr(y_true, y_pred):
+    # y_true and y_pred should be in original units
+    corr = np.corrcoef(y_true, y_pred)[0, 1]
+    print(f"Pearson Corr: {corr:.4f}")
+    return corr
 
 
 def main():
-    """
-     - Loads CSV (given some path parser to the CSV) with filtered events that will be given to DNN.
-     - Tracks and displays the total number of events given to the DNN.
-     - Trains/evaluates the model.
-
-    """
-    parser = argparse.ArgumentParser(description="Train DNN on particle data.")
-    parser.add_argument('--csv_path', type=str, required=False,
-                        default=os.path.join(output_directory, csv_filename),
-                        help='Enter full path to the input CSV file here!')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--csv_path', type=str,
+                        default=os.path.join(output_dir, csv_file),
+                        help="Path to your CSV file with data")
 
     args = parser.parse_args()
     csv_path = args.csv_path
 
+    print(f"Reading from: {csv_path}")
     df = pd.read_csv(csv_path)
-    total_events = df.shape[0]
-    print("CSV loaded from:", csv_path)
-    print("Total events loaded:", total_events)
-    
+    print(f"Loaded {len(df)} events")
+
+    # Split features and target
     X = df.drop(columns=["target"]).values
     y = df["target"].values
 
+    # Scale target to [0,1]
+    y_max = y.max()
+    y_scaled = y / y_max
+
+    # Standardize inputs
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    # Train/test split
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.1, random_state=42)
+        X_scaled, y_scaled, test_size=0.2, random_state=42
+    )
 
-    input_dim = max_number_Non_Muons * particle_features
-    model = build_model(input_dim=input_dim)
+    # Build and train model
+    model = build_model(input_dim=X_train.shape[1])
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', patience=10, restore_best_weights=True
+    )
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6
+    )
 
-    history = model.fit(X_train, y_train, epochs=100, batch_size=10,
-                        verbose=2, validation_split=0.2)
+    history = model.fit(
+        X_train, y_train,
+        epochs=200,
+        batch_size=32,
+        validation_split=0.2,
+        callbacks=[early_stop, reduce_lr],
+        verbose=2
+    )
 
-    mse = model.evaluate(X_test, y_test, verbose=0)
-    print("Mean Squared Error on Test Set:", mse)
-    y_pred = model.predict(X_test)
-    evaluate_correlation(y_test, y_pred)
-    plot_predictions(y_test, y_pred)
-    plot_training_loss(history)
+    # Evaluate on test set (scaled MSE)
+    test_loss_scaled = model.evaluate(X_test, y_test, verbose=0)
+    # convert MSE back to original units: MSE scales by (y_max)^2
+    test_loss = test_loss_scaled * (y_max ** 2)
+    print(f"Test MSE (original units): {test_loss:.3f}")
 
-if __name__ == '__main__':
+    # Predict and rescale predictions
+    y_pred_scaled = model.predict(X_test).flatten()
+    y_pred = y_pred_scaled * y_max
+    y_true = y_test * y_max
+
+    # Evaluate and plot in original units
+    evaluate_corr(y_true, y_pred)
+    plot_predictions(y_true, y_pred)
+    plot_loss_curve(history)
+
+if __name__ == "__main__":
     main()
