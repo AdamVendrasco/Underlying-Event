@@ -38,7 +38,6 @@ def build_model(input_dim):
 
     model.add(tf.keras.layers.Dense(1))  # output layer (linear-regression)
 
-    # Use a moderate learning rate to ensure stable convergence
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
                   loss='mean_squared_error')
     return model
@@ -97,15 +96,13 @@ def main():
     X = df.drop(columns=["target"]).values
     y = df["target"].values
 
-    # Scale target to [0,1]
+    # Scale target to [0,1]. THis seems to help with overfitting issues
     y_max = y.max()
     y_scaled = y / y_max
-
-    # Standardize inputs
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    # Train/test split
+
     X_train, X_test, y_train, y_test = train_test_split(
         X_scaled, y_scaled, test_size=0.2, random_state=42
     )
@@ -130,12 +127,11 @@ def main():
 
     # Evaluate on test set (scaled MSE)
     test_loss_scaled = model.evaluate(X_test, y_test, verbose=0)
-    # convert MSE back to original units: MSE scales by (y_max)^2
-    test_loss = test_loss_scaled * (y_max ** 2)
+ 
+    test_loss = test_loss_scaled * (y_max ** 2)   # converts MSE back to original units: MSE scales by (y_max)^2
     print(f"Test MSE (original units): {test_loss:.3f}")
 
-    # Predict and rescale predictions
-    y_pred_scaled = model.predict(X_test).flatten()
+    y_pred_scaled = model.predict(X_test).flatten() # Predict and rescale predictions
     y_pred = y_pred_scaled * y_max
     y_true = y_test * y_max
 

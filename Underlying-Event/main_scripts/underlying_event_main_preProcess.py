@@ -8,14 +8,19 @@ import pandas as pd
 from ROOT import TLorentzVector
 
 sys.path.insert(0, "/afs/cern.ch/user/a/avendras/.local/lib/python3.9/site-packages")
-print("NOW")
-# Configuration parameters
-#file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-#output_directory = "/app/Underlying-Event/"
-file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
-output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/" #test
+print("NOW") #debug stuff 
+
+# Configuration parameters change these paths based on in or outside of Docker image:
+#inside
+file_index_path = "/app/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+output_directory = "/app/Underlying-Event/"
+
+#outside
+#file_index_path = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/CMS_Run2015D_DoubleMuon_AOD_16Dec2015-v1_10000_file_index.txt"
+#output_directory = "/afs/cern.ch/user/a/avendras/work/Underlying-Event/Underlying-Event/"
+
 tree_name = "Events"
-print("Now 2")
+print("Now 2") #debug stuff 
 branches = [
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.pdgId_",
     "recoPFCandidates_particleFlow__RECO./recoPFCandidates_particleFlow__RECO.obj/recoPFCandidates_particleFlow__RECO.obj.m_state.p4Polar_.fCoordinates.fPt",
@@ -64,11 +69,12 @@ def process_events(data):
     total_events = len(particle_ids)
     selected_events = 0  # Counter for events passing selection cuts
 
-    # Loop over each event in the chunk of data
+    # Loop over each event in the chunk of dat,
+    # Process the event: extract muon candidates etc.
+    # Apply selection criteria,
+    # Calculate the invariant mass of the Z candidate (sum of two muons)
     for evt_ids, evt_pts, evt_etas, evt_phis, evt_masses, evt_vertices in zip(
         particle_ids, pts, etas, phis, masses, vertices_z):
-
-        # Process the event: extract muon candidates etc.
         muon_vectors = []
         muon_charges = []
         muon_vertex_z = []
@@ -81,13 +87,13 @@ def process_events(data):
                 muon_charges.append(np.sign(pdgid))
                 muon_vertex_z.append(vertex)
 
-        # Apply selection criteria
+        
         if len(muon_vectors) != 2 or (muon_charges[0] * muon_charges[1] >= 0):
             continue
         if abs(muon_vertex_z[0] - muon_vertex_z[1]) > dz_threshold:
             continue
 
-        # Calculate the invariant mass of the Z candidate (sum of two muons)
+        
         z_candidate = muon_vectors[0] + muon_vectors[1]
         z_mass = z_candidate.M()
         if not (z_mass_range[0] <= z_mass <= z_mass_range[1]):
@@ -120,7 +126,6 @@ def process_events(data):
         event_targets.append(muon_pz_sum)
         selected_events += 1
 
-    # Print out summary info for the chunk:
     print(f"Processed {total_events} events in this chunk.")
     print(f"Selected events in this chunk: {selected_events}")
     return (event_inputs, event_targets, invariant_masses,
